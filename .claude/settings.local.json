@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm root *)",
+      "Bash(ls \"C:\\\\Users\\\\mateu\\\\AppData\\\\Roaming\\\\npm\\\\node_modules\" 2>/dev/null | grep -E \"pptxgenjs|react-icons|sharp|react-dom\" || echo \"No matching packages found\")",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node generate-presentation.js)",
+      "Bash(python \"C:/Users/mateu/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/36e46668-106b-403a-bc41-76b3d752b8cd/f75c7bc2-96c7-46ef-94a3-4cf7d3cdf4fe/skills/pptx/scripts/office/soffice.py\" --headless --convert-to pdf AthletiQLab-Validacao-EducacaoFisica.pptx)",
+      "Bash(where soffice *)",
+      "Read(//c/Program Files/LibreOffice/program/**)",
+      "Read(//c/Program Files \\(x86\\)/LibreOffice/program/**)",
+      "Bash(where libreoffice *)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/mateu/AppData/Local/Programs/**)",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Claude Code\\\\AthletiQLab\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(grep -E '\\\\.\\(json|yaml|yml|rc|gitignore|prettierrc|eslintrc\\)$')",
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(pnpm install *)",
+      "PowerShell(npm *)",
+      "PowerShell(npm install *)",
+      "Bash(git add *)"
+    ]
+  }
+}

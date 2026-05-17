@@ -1,0 +1,32 @@
+name: Release Mobile
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Stub — EAS Build will be configured when mobile app reaches beta stage (Sprint 10+)
+jobs:
+  build:
+    name: EAS Build (stub)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build mobile (placeholder)
+        run: echo "EAS Build will be configured here. Tag ${{ github.ref_name }}"

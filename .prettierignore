@@ -1,0 +1,8 @@
+node_modules
+dist
+.next
+out
+.expo
+.turbo
+pnpm-lock.yaml
+*.generated.*

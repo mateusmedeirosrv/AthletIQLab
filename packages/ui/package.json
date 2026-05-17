@@ -1,0 +1,20 @@
+{
+  "name": "@athletiqlab/ui",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens": "./src/tokens/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "devDependencies": {
+    "@athletiqlab/eslint-config": "workspace:*",
+    "@athletiqlab/typescript-config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
