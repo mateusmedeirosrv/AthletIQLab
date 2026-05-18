@@ -13,7 +13,7 @@ export class AiOutputInvalidError extends Error {
 interface CallWithValidationOptions<T> {
   messages: OpenAI.Chat.ChatCompletionMessageParam[]
   schema: ZodSchema<T>
-  usePremium?: boolean
+  usePremium?: boolean | undefined
 }
 
 export async function callWithValidation<T>({

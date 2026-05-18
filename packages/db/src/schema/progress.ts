@@ -6,7 +6,6 @@ import {
   pgTable,
   smallint,
   timestamp,
-  timestamptz,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -31,6 +30,6 @@ export const heartRateSamples = pgTable('heart_rate_samples', {
   sessionId: uuid('session_id')
     .notNull()
     .references(() => workoutSessions.id, { onDelete: 'cascade' }),
-  timestamp: timestamptz('timestamp').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
   bpm: smallint('bpm').notNull(),
 })

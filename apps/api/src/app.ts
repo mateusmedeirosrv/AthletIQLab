@@ -3,6 +3,11 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import sensible from '@fastify/sensible'
 
+import { authPlugin } from './plugins/auth'
+import { authRoutes } from './routes/auth'
+import { personalRoutes } from './routes/personals'
+import { studentRoutes } from './routes/students'
+
 export async function buildApp() {
   const app = Fastify({
     logger: {
@@ -21,16 +26,13 @@ export async function buildApp() {
   })
 
   await app.register(sensible)
+  await app.register(authPlugin)
 
-  // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
-  // Routes will be registered here as sprints progress
-  // app.register(authRoutes, { prefix: '/auth' })
-  // app.register(personalRoutes, { prefix: '/personals' })
-  // app.register(studentRoutes, { prefix: '/students' })
-  // app.register(workoutRoutes, { prefix: '/workouts' })
-  // app.register(aiRoutes, { prefix: '/ai' })
+  await app.register(authRoutes, { prefix: '/auth' })
+  await app.register(personalRoutes, { prefix: '/personals' })
+  await app.register(studentRoutes, { prefix: '/students' })
 
   return app
 }

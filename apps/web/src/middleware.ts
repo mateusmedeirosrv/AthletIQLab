@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
@@ -12,11 +12,11 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set({ name, value, ...options }),
           )
         },
       },
@@ -27,15 +27,26 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  const { pathname } = request.nextUrl
+
+  // Redirect unauthenticated users away from protected routes
+  if (!user && (pathname.startsWith('/dashboard') || pathname === '/onboarding')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Redirect already-onboarded users away from onboarding
+  if (user && pathname === '/onboarding' && user.user_metadata?.['onboarded'] === true) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Redirect authenticated+onboarded users away from auth pages
+  if (user && user.user_metadata?.['onboarded'] === true && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/onboarding', '/login'],
 }

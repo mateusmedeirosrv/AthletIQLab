@@ -13,6 +13,7 @@ export default [
       '**/.turbo/**',
       '**/build/**',
       'packages/eslint-config/**',
+      '**/next-env.d.ts',
     ],
   },
   {
