@@ -5,8 +5,10 @@ import sensible from '@fastify/sensible'
 
 import { authPlugin } from './plugins/auth'
 import { authRoutes } from './routes/auth'
+import { exerciseRoutes } from './routes/exercises'
 import { personalRoutes } from './routes/personals'
 import { studentRoutes } from './routes/students'
+import { workoutRoutes } from './routes/workouts'
 
 export async function buildApp() {
   const app = Fastify({
@@ -33,6 +35,8 @@ export async function buildApp() {
   await app.register(authRoutes, { prefix: '/auth' })
   await app.register(personalRoutes, { prefix: '/personals' })
   await app.register(studentRoutes, { prefix: '/students' })
+  await app.register(exerciseRoutes, { prefix: '/exercises' })
+  await app.register(workoutRoutes, { prefix: '/workouts' })
 
   return app
 }

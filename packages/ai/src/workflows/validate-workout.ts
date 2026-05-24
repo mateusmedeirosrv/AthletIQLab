@@ -1,10 +1,13 @@
+import type { Plan } from '@athletiqlab/shared'
 import { aiValidateWorkoutOutputSchema } from '@athletiqlab/shared'
 import type { AiValidateWorkoutOutput } from '@athletiqlab/shared'
 
 import { SYSTEM_PROMPT } from '../prompts/system'
 import { callWithValidation } from '../guardrails/validate-output'
 
-interface ValidateWorkoutParams {
+export interface ValidateWorkoutParams {
+  personalId: string
+  plan: Plan
   workout: {
     title: string
     modality: string
@@ -29,7 +32,10 @@ export async function validateWorkout(
 ): Promise<AiValidateWorkoutOutput> {
   return callWithValidation({
     schema: aiValidateWorkoutOutputSchema,
-    usePremium: params.usePremium,
+    personalId: params.personalId,
+    feature: 'validate',
+    plan: params.plan,
+    usePremium: params.usePremium ?? false,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       {
