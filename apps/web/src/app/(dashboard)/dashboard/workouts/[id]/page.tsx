@@ -168,7 +168,7 @@ function PublishButton({ workoutId, token }: { workoutId: string; token: string 
   async function publish() {
     'use server'
     await api.patch(`/workouts/${workoutId}`, { status: 'published' }, token)
-    redirect(`/dashboard/workouts/${workoutId}`)
+    redirect(`/dashboard/workouts/${workoutId}` as `/dashboard/workouts/${string}`)
   }
 
   return (

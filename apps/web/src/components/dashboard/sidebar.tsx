@@ -2,11 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { LucideIcon } from 'lucide-react'
 import { LayoutDashboard, Users, Dumbbell, Settings, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/app/(auth)/actions'
 
-const navItems = [
+type NavRoute = '/dashboard' | '/dashboard/students' | '/dashboard/workouts' | '/dashboard/settings'
+
+const navItems: { href: NavRoute; label: string; icon: LucideIcon; exact?: boolean }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/dashboard/students', label: 'Alunos', icon: Users },
   { href: '/dashboard/workouts', label: 'Treinos', icon: Dumbbell },

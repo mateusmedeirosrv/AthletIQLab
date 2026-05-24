@@ -15,7 +15,7 @@ export async function signInWithGoogle() {
     },
   })
   if (error) throw new Error(error.message)
-  if (data.url) redirect(data.url)
+  if (data.url) redirect(data.url as `${string}:${string}`)
 }
 
 export async function signInWithMagicLink(_prevState: unknown, formData: FormData) {
@@ -29,6 +29,17 @@ export async function signInWithMagicLink(_prevState: unknown, formData: FormDat
   })
   if (error) return { error: error.message }
   return { success: true }
+}
+
+export async function signInWithPassword(_prevState: unknown, formData: FormData) {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  if (!email || !password) return { error: 'E-mail e senha são obrigatórios' }
+
+  const supabase = await createServerClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return { error: error.message }
+  redirect('/dashboard')
 }
 
 export async function signOut() {

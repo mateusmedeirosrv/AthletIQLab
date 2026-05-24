@@ -230,12 +230,12 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col items-center gap-4 text-sm text-neutral-400 sm:flex-row sm:justify-between">
           <span className="font-medium text-blue-600">AthletiQLab</span>
           <div className="flex gap-6">
-            <Link href="/termos" className="hover:text-neutral-600 transition-colors">
+            <a href="#" className="hover:text-neutral-600 transition-colors">
               Termos de Uso
-            </Link>
-            <Link href="/privacidade" className="hover:text-neutral-600 transition-colors">
+            </a>
+            <a href="#" className="hover:text-neutral-600 transition-colors">
               Privacidade
-            </Link>
+            </a>
           </div>
           <span>© {new Date().getFullYear()} AthletiQLab</span>
         </div>

@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { signInWithGoogle, signInWithMagicLink } from '../actions'
+import { signInWithGoogle, signInWithMagicLink, signInWithPassword } from '../actions'
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -31,8 +31,12 @@ const GoogleIcon = () => (
 
 export default function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const [usePassword, setUsePassword] = useState(false)
   const [state, formAction, isPending] = useActionState(
     async (_prev: unknown, formData: FormData) => {
+      if (usePassword) {
+        return await signInWithPassword(_prev, formData)
+      }
       const result = await signInWithMagicLink(_prev, formData)
       if (result?.success) setMagicLinkSent(true)
       return result
@@ -92,22 +96,42 @@ export default function LoginPage() {
                 autoComplete="email"
               />
             </div>
+            {usePassword && (
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+            )}
             {state?.error && <p className="text-xs text-red-500">{state.error}</p>}
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-              Enviar link de acesso
+              {usePassword ? 'Entrar com senha' : 'Enviar link de acesso'}
             </Button>
+            <button
+              type="button"
+              onClick={() => setUsePassword((v) => !v)}
+              className="w-full text-center text-xs text-neutral-400 hover:text-neutral-600"
+            >
+              {usePassword ? 'Usar link de acesso por e-mail' : 'Entrar com senha'}
+            </button>
           </form>
 
           <p className="mt-6 text-center text-xs text-neutral-400">
             Ao continuar, você concorda com nossos{' '}
-            <Link href="/termos" className="underline hover:text-neutral-600">
+            <a href="#" className="underline hover:text-neutral-600">
               Termos
-            </Link>{' '}
+            </a>{' '}
             e{' '}
-            <Link href="/privacidade" className="underline hover:text-neutral-600">
+            <a href="#" className="underline hover:text-neutral-600">
               Privacidade
-            </Link>
+            </a>
             .
           </p>
         </div>

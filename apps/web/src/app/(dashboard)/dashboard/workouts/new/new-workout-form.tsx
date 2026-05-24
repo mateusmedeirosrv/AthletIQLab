@@ -32,6 +32,7 @@ interface GeneratedWorkout {
     safetyNotes?: string[]
   }
   safetyNotes?: string[]
+  exerciseNames?: Record<string, string>
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export function NewWorkoutForm({ token }: { token: string }) {
     setLoading(true)
 
     try {
-      const result = await api.post<GeneratedWorkout>(
+      const { data } = await api.post<{ data: GeneratedWorkout }>(
         '/workouts/generate',
         {
           student: {
@@ -104,7 +105,7 @@ export function NewWorkoutForm({ token }: { token: string }) {
         },
         token,
       )
-      setGenerated(result)
+      setGenerated(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar treino')
     } finally {
@@ -338,16 +339,29 @@ function WorkoutPreview({
       )}
 
       {workout.warmUp && workout.warmUp.length > 0 && (
-        <ExerciseGroup title="Aquecimento" exercises={workout.warmUp} />
+        <ExerciseGroup
+          title="Aquecimento"
+          exercises={workout.warmUp}
+          {...(generated.exerciseNames ? { names: generated.exerciseNames } : {})}
+        />
       )}
 
-      <ExerciseGroup title="Treino principal" exercises={workout.exercises} />
+      <ExerciseGroup
+        title="Treino principal"
+        exercises={workout.exercises}
+        {...(generated.exerciseNames ? { names: generated.exerciseNames } : {})}
+      />
 
       <div className="flex gap-3 pt-2">
         <Button variant="outline" onClick={onBack} className="flex-1">
           Gerar novamente
         </Button>
-        <Button className="flex-1" onClick={() => router.push(`/dashboard/workouts/${workoutId}`)}>
+        <Button
+          className="flex-1"
+          onClick={() =>
+            router.push(`/dashboard/workouts/${workoutId}` as `/dashboard/workouts/${string}`)
+          }
+        >
           Ver treino salvo
           <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
@@ -356,7 +370,15 @@ function WorkoutPreview({
   )
 }
 
-function ExerciseGroup({ title, exercises }: { title: string; exercises: AiExercise[] }) {
+function ExerciseGroup({
+  title,
+  exercises,
+  names,
+}: {
+  title: string
+  exercises: AiExercise[]
+  names?: Record<string, string>
+}) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
       <div className="border-b border-neutral-100 bg-neutral-50 px-5 py-3">
@@ -369,7 +391,9 @@ function ExerciseGroup({ title, exercises }: { title: string; exercises: AiExerc
               {i + 1}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-900 truncate">{ex.exerciseId}</p>
+              <p className="text-sm font-medium text-neutral-900 truncate">
+                {names?.[ex.exerciseId] ?? ex.exerciseId}
+              </p>
               <p className="mt-0.5 text-xs text-neutral-500">
                 {ex.sets}x{ex.reps}
                 {ex.load ? ` · ${ex.load}` : ''}

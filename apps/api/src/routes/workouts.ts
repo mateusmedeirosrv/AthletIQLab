@@ -308,8 +308,24 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(422).send({ error: { code: 'AI_REFUSAL', message: result.refusal } })
     }
 
+    // Filter out any exerciseIds the AI hallucinated (not in the library we sent)
+    const validIds = new Set(exerciseLibrary.map((e) => e.id))
+    const validMainExercises = result.exercises.filter((e) => validIds.has(e.exerciseId))
+    const validWarmUp = (result.warmUp ?? []).filter((e) => validIds.has(e.exerciseId))
+
+    if (validMainExercises.length === 0) {
+      return reply.code(422).send({
+        error: {
+          code: 'AI_INVALID_EXERCISES',
+          message: 'A IA não retornou exercícios válidos da biblioteca. Tente gerar novamente.',
+        },
+      })
+    }
+
+    const sanitizedResult = { ...result, exercises: validMainExercises, warmUp: validWarmUp }
+
     if (!parsed.data.saveDraft) {
-      return reply.code(200).send({ data: result })
+      return reply.code(200).send({ data: sanitizedResult })
     }
 
     // Persist as draft
@@ -318,9 +334,9 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
       .values({
         personalId: request.userId,
         studentId: parsed.data.studentId,
-        title: result.title,
-        modality: result.modality,
-        estimatedDurationMin: result.estimatedDurationMin,
+        title: sanitizedResult.title,
+        modality: sanitizedResult.modality,
+        estimatedDurationMin: sanitizedResult.estimatedDurationMin,
         aiGenerated: true,
         aiPromptSnapshot: { student: parsed.data.student, preferences: parsed.data.preferences },
         status: 'draft',
@@ -328,7 +344,7 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
       .returning()
 
     if (workout) {
-      const mainExercises = result.exercises.map((e) => ({
+      const mainExercises = sanitizedResult.exercises.map((e) => ({
         workoutId: workout.id,
         exerciseId: e.exerciseId,
         order: e.order,
@@ -339,10 +355,10 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
         ...(e.notes ? { notes: e.notes } : {}),
       }))
 
-      const warmUpExercises = (result.warmUp ?? []).map((e, i) => ({
+      const warmUpExercises = sanitizedResult.warmUp.map((e, i) => ({
         workoutId: workout.id,
         exerciseId: e.exerciseId,
-        order: -(result.exercises.length + i + 1),
+        order: -(sanitizedResult.exercises.length + i + 1),
         sets: e.sets,
         reps: e.reps,
         ...(e.load ? { load: e.load } : {}),
@@ -355,11 +371,14 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
+    const exerciseNames = Object.fromEntries(exerciseLibrary.map((e) => [e.id, e.name]))
+
     return reply.code(201).send({
       data: {
         workoutId: workout?.id,
-        workout: result,
-        safetyNotes: result.safetyNotes,
+        workout: sanitizedResult,
+        safetyNotes: sanitizedResult.safetyNotes,
+        exerciseNames,
       },
     })
   })
