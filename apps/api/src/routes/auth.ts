@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { db, personals, users } from '@athletiqlab/db'
-import { supabaseAdmin } from '../plugins/supabase'
+import { getSupabaseAdmin } from '../plugins/supabase'
 
 const onboardSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
@@ -34,7 +34,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.conflict('Personal já cadastrado')
       }
 
-      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(request.userId)
+      const { data: authData } = await getSupabaseAdmin().auth.admin.getUserById(request.userId)
       const email = authData.user?.email ?? ''
       const provider = authData.user?.app_metadata?.['provider'] ?? 'email'
 
@@ -52,7 +52,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
           set: { role: 'personal', consentLgpdAt: new Date(), updatedAt: new Date() },
         })
 
-      await supabaseAdmin.auth.admin.updateUserById(request.userId, {
+      await getSupabaseAdmin().auth.admin.updateUserById(request.userId, {
         user_metadata: { role: 'personal', name, onboarded: true },
       })
 

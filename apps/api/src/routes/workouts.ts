@@ -98,7 +98,7 @@ async function getPersonalPlan(personalId: string) {
   return p?.plan ?? ('starter' as const)
 }
 
-async function getPublicExerciseLibrary(): Promise<ExerciseLibraryItem[]> {
+async function getPublicExerciseLibrary(modalityFilter?: string): Promise<ExerciseLibraryItem[]> {
   const rows = await db
     .select({
       id: exercises.id,
@@ -111,7 +111,7 @@ async function getPublicExerciseLibrary(): Promise<ExerciseLibraryItem[]> {
     .from(exercises)
     .where(eq(exercises.isPublic, true))
 
-  return rows.map((r) => ({
+  const all = rows.map((r) => ({
     id: r.id,
     name: r.name,
     muscleGroup: tryParseJson<string[]>(r.muscleGroup),
@@ -119,6 +119,17 @@ async function getPublicExerciseLibrary(): Promise<ExerciseLibraryItem[]> {
     equipment: tryParseJson<string[]>(r.equipment),
     level: r.level,
   }))
+
+  // Filter by modality to keep the context smaller for the AI
+  if (modalityFilter) {
+    const filtered = all.filter((e) =>
+      e.modality.some((m) => m === modalityFilter || m.includes(modalityFilter)),
+    )
+    // Fall back to all if filter returns too few exercises
+    return filtered.length >= 10 ? filtered : all
+  }
+
+  return all
 }
 
 function tryParseJson<T>(raw: string): T {
@@ -261,8 +272,8 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const plan = await getPersonalPlan(request.userId)
-    const exerciseLibrary = await getPublicExerciseLibrary()
     const { student, preferences } = parsed.data
+    const exerciseLibrary = await getPublicExerciseLibrary(preferences.modality)
 
     let result: Awaited<ReturnType<typeof generateWorkout>>
     try {

@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import type { UserRole } from '@athletiqlab/shared'
-import { supabaseAdmin } from './supabase'
+import { getSupabaseAdmin } from './supabase'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -28,7 +28,7 @@ const plugin: FastifyPluginAsync = async (fastify) => {
       const {
         data: { user },
         error,
-      } = await supabaseAdmin.auth.getUser(token)
+      } = await getSupabaseAdmin().auth.getUser(token)
       if (error || !user) {
         return reply.unauthorized('Token inválido ou expirado')
       }

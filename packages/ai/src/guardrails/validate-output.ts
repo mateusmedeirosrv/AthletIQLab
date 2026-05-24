@@ -5,7 +5,7 @@ import type { Plan } from '@athletiqlab/shared'
 import { PLAN_LIMITS } from '@athletiqlab/shared'
 import { db, aiUsageLog } from '@athletiqlab/db'
 
-import { openai, AI_MODELS } from '../client'
+import { getOpenAIClient, AI_MODELS } from '../client'
 
 type AiFeature = 'generate_workout' | 'suggest_exercises' | 'substitute' | 'validate'
 
@@ -81,7 +81,7 @@ export async function callWithValidation<T>({
   const startedAt = Date.now()
 
   async function attempt(msgs: OpenAI.Chat.ChatCompletionMessageParam[]) {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model,
       messages: msgs,
       response_format: { type: 'json_object' },
