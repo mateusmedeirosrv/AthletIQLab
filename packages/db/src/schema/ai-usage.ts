@@ -17,6 +17,7 @@ export const aiFeatureEnum = pgEnum('ai_feature', [
   'suggest_exercises',
   'substitute',
   'validate',
+  'chat_workout_creation',
 ])
 
 export const aiUsageLog = pgTable('ai_usage_log', {

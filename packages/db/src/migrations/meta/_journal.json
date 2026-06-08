@@ -8,6 +8,20 @@
       "when": 1779064041794,
       "tag": "0000_great_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779150000000,
+      "tag": "0001_rls_and_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780876800000,
+      "tag": "0002_ai_chat_conversations",
+      "breakpoints": true
     }
   ]
 }

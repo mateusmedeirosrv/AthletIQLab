@@ -9,7 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@athletiqlab/db": "workspace:*",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@athletiqlab/eslint-config": "workspace:*",
     "@athletiqlab/typescript-config": "workspace:*",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
   }
 }

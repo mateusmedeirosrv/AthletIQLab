@@ -1,3 +1,4 @@
+export * from './ai-chat'
 export * from './ai-usage'
 export * from './anamneses'
 export * from './audit'

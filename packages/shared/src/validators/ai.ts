@@ -46,7 +46,31 @@ export const aiValidateWorkoutOutputSchema = z.object({
   contraindications: z.array(z.string()),
 })
 
+// Schema for AI-proposed workout in chat flow — modality is open text, exerciseId is optional
+const aiChatExerciseSchema = z.object({
+  exerciseId: z.string().uuid().optional(),
+  name: z.string().min(1),
+  order: z.number().int().min(1),
+  sets: z.number().int().min(1),
+  reps: z.string().min(1),
+  load: z.string().optional(),
+  restSeconds: z.number().int().optional(),
+  notes: z.string().optional(),
+  rationale: z.string().optional(),
+})
+
+export const aiChatWorkoutProposalSchema = z.object({
+  title: z.string().min(2).max(100),
+  modality: z.string().min(1),
+  estimatedDurationMin: z.number().int().min(5).max(240),
+  exercises: z.array(aiChatExerciseSchema).min(1),
+  warmUp: z.array(aiChatExerciseSchema).optional(),
+  coolDown: z.array(aiChatExerciseSchema).optional(),
+  safetyNotes: z.array(z.string()).optional(),
+})
+
 export type AiGenerateWorkoutOutput = z.infer<typeof aiGenerateWorkoutOutputSchema>
 export type AiSuggestExercisesOutput = z.infer<typeof aiSuggestExercisesOutputSchema>
 export type AiSubstituteExerciseOutput = z.infer<typeof aiSubstituteExerciseOutputSchema>
 export type AiValidateWorkoutOutput = z.infer<typeof aiValidateWorkoutOutputSchema>
+export type AiChatWorkoutProposal = z.infer<typeof aiChatWorkoutProposalSchema>
