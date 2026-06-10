@@ -25,7 +25,7 @@ export function useWatch(sessionId: string | null) {
     let subscription: ReturnType<NativeEventEmitter['addListener']> | null = null
     if (NativeModules['WatchConnectivity']) {
       const emitter = new NativeEventEmitter(
-        NativeModules['WatchConnectivity'] as Parameters<typeof NativeEventEmitter>[0],
+        NativeModules['WatchConnectivity'] as ConstructorParameters<typeof NativeEventEmitter>[0],
       )
       subscription = emitter.addListener('hrBatch', (data: { samples: HRSample[] }) => {
         pendingHR.current.push(...data.samples)

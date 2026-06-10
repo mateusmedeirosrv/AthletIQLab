@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList, Dumbbell } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Dumbbell, MessageSquare } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { AnamneseSection } from './anamnese-section'
+import { ChatSection } from './chat-section'
 
 const statusLabel: Record<
   string,
@@ -177,6 +178,17 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
         <AnamneseSection studentId={id} filled={anamneseStatus.filled} token={token} />
+      </section>
+
+      {/* Chat section */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900">
+            <MessageSquare className="h-4 w-4" />
+            Mensagens
+          </h2>
+        </div>
+        <ChatSection studentId={id} userId={session.user.id} token={token} />
       </section>
     </div>
   )

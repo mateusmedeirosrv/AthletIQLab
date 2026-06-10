@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { makeRedirectUri } from 'expo-auth-session'
+import * as Notifications from 'expo-notifications'
 import * as WebBrowser from 'expo-web-browser'
+import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { apiClient } from '../lib/api'
 
@@ -44,6 +46,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function registerPushToken() {
+    try {
+      const permissions = await Notifications.requestPermissionsAsync()
+      // expo-notifications v56 has a platform-specific type; check ios.status or android implicit grant
+      const isGranted =
+        Platform.OS === 'ios'
+          ? permissions.ios?.status === 2 // IosAuthorizationStatus.AUTHORIZED
+          : true // Android grants automatically on older API levels
+      if (!isGranted) return
+      const tokenData = await Notifications.getExpoPushTokenAsync()
+      const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android'
+      await apiClient.post('/notifications/push-token', {
+        expoToken: tokenData.data,
+        platform,
+      })
+    } catch {
+      // Non-critical — user denied or device has no push support
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s)
@@ -58,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
       setUser(s?.user ?? null)
       const r =
@@ -66,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(r)
       if (s && r === 'student') {
         fetchStudentProfile()
+        if (event === 'SIGNED_IN') void registerPushToken()
       } else {
         setStudentProfile(null)
       }

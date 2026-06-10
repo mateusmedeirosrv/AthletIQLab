@@ -6,8 +6,11 @@ import sensible from '@fastify/sensible'
 import { authPlugin } from './plugins/auth'
 import { aiChatRoutes } from './routes/ai-chat'
 import { authRoutes } from './routes/auth'
+import { conversationRoutes } from './routes/conversations'
 import { exerciseRoutes } from './routes/exercises'
+import { notificationRoutes } from './routes/notifications'
 import { personalRoutes } from './routes/personals'
+import { progressRoutes } from './routes/progress'
 import { sessionRoutes } from './routes/sessions'
 import { studentRoutes } from './routes/students'
 import { workoutRoutes } from './routes/workouts'
@@ -40,6 +43,9 @@ export async function buildApp() {
   await app.register(exerciseRoutes, { prefix: '/exercises' })
   await app.register(workoutRoutes, { prefix: '/workouts' })
   await app.register(sessionRoutes, { prefix: '/workout-sessions' })
+  await app.register(progressRoutes, { prefix: '/progress' })
+  await app.register(conversationRoutes, { prefix: '/conversations' })
+  await app.register(notificationRoutes, { prefix: '/notifications' })
   await app.register(aiChatRoutes, { prefix: '/ai/workout-chat' })
 
   return app
