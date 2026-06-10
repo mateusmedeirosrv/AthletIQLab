@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/dashboard/sidebar'
+import { CrispChat } from '@/components/crisp-chat'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -19,6 +20,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
       </main>
+      <CrispChat
+        userId={user.id}
+        userEmail={user.email}
+        userName={user.user_metadata?.['name'] as string | undefined}
+      />
     </div>
   )
 }

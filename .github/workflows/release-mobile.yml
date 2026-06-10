@@ -5,11 +5,11 @@ on:
     tags:
       - 'v*'
 
-# Stub — EAS Build will be configured when mobile app reaches beta stage (Sprint 10+)
 jobs:
-  build:
-    name: EAS Build (stub)
+  build-and-submit:
+    name: EAS Build + Submit
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,5 +28,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build mobile (placeholder)
-        run: echo "EAS Build will be configured here. Tag ${{ github.ref_name }}"
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (production)
+        working-directory: apps/mobile
+        run: eas build --platform ios --profile production --non-interactive
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+
+      - name: Build Android (production)
+        working-directory: apps/mobile
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: Submit iOS to App Store
+        working-directory: apps/mobile
+        run: eas submit --platform ios --latest --non-interactive
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+
+      - name: Submit Android to Play Store
+        working-directory: apps/mobile
+        run: eas submit --platform android --latest --non-interactive
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_PATH: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_PATH }}

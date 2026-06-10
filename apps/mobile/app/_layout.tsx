@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Stack, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments, ErrorBoundary } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '../context/auth'
@@ -43,6 +43,8 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>
 }
+
+export { ErrorBoundary }
 
 export default function RootLayout() {
   return (

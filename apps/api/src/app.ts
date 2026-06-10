@@ -9,6 +9,7 @@ import { authRoutes } from './routes/auth'
 import { billingRoutes } from './routes/billing'
 import { conversationRoutes } from './routes/conversations'
 import { exerciseRoutes } from './routes/exercises'
+import { feedbackRoutes } from './routes/feedback'
 import { notificationRoutes } from './routes/notifications'
 import { personalRoutes } from './routes/personals'
 import { progressRoutes } from './routes/progress'
@@ -51,6 +52,7 @@ export async function buildApp() {
   await app.register(billingRoutes, { prefix: '/billing' })
   await app.register(webhookRoutes, { prefix: '/webhooks' })
   await app.register(aiChatRoutes, { prefix: '/ai/workout-chat' })
+  await app.register(feedbackRoutes, { prefix: '/feedback' })
 
   return app
 }
