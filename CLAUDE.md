@@ -12,7 +12,7 @@ SaaS B2B para profissionais de Ed. Física e saúde física (personal trainers C
 
 Monorepo Turborepo com `apps/{mobile,web,api}` e `packages/{db,shared,ai,ui}`:
 
-- `apps/mobile` — React Native (Expo SDK 51) com expo-router; targets watchOS (Swift/SwiftUI) e Wear OS (Kotlin/Compose)
+- `apps/mobile` — React Native (Expo SDK 52) com expo-router 4; targets watchOS (Swift/SwiftUI) e Wear OS (Kotlin/Compose)
 - `apps/web` — Next.js 15 App Router; painel web do personal (Tailwind + shadcn/ui)
 - `apps/api` — Fastify + Zod; autenticação via JWT Supabase; serve todos os clientes
 - `packages/db` — Drizzle ORM schema + migrations; único lugar de definição das tabelas
@@ -46,20 +46,31 @@ pnpm --filter=<package> exec vitest run src/path/to/test.spec.ts
 
 Testes: **Vitest** para unitário e integração de API; **Playwright** para E2E web; **Maestro** para E2E mobile.
 
-## Estado atual — Sprints 1–6 concluídos
+## Estado atual — Sprints 1–14 concluídos (MVP completo)
 
 O que está implementado:
 
 - Auth (Supabase, Google OAuth + magic link), onboarding do profissional, middleware de rotas
-- Dashboard web: lista de alunos, lista/detalhe/criação de treinos, configurações
-- API Fastify: rotas `/auth`, `/personals`, `/students`, `/exercises`, `/workouts`, `/ai/workout-chat`
+- Dashboard web: lista de alunos, lista/detalhe/criação de treinos, configurações, billing
+- API Fastify: rotas `/auth`, `/personals`, `/students`, `/exercises`, `/workouts`, `/ai/workout-chat`, `/workout-sessions`, `/progress`, `/conversations`, `/notifications`, `/billing`, `/webhooks`, `/feedback`
 - AI single-shot: generate, suggest-exercises, substitute, validate — tudo em `packages/ai`
 - AI multi-turn: chat conversacional para criação de treino (`/ai/workout-chat`) com estado persistido
-- Schema Drizzle completo + migrations com RLS
+- AI web: botão "Validar com IA" e "Substituir" inline no detalhe do treino
+- App mobile (Expo SDK 52): auth Google, lista de treinos, player Reels, check-in/out de sessão, set logger, rest timer
+- SmartWatch: watchOS companion app (Swift/SwiftUI), Wear OS companion app (Kotlin/Compose), WatchConnectivity bridge
+- Health Connect (Android): leitura de FC pós-sessão + gráfico SVG
+- Progresso: gráfico de barras semanal (frequência + volume) + histórico de sessões
+- Chat profissional–cliente via Supabase Realtime (web + mobile) + push notifications (Expo Push)
+- Billing: Mercado Pago Checkout Pro, assinaturas recorrentes, webhook handler, tela de planos
+- Plan gating: `PLAN_LIMITS` + check em upload de vídeo (402 se plano insuficiente)
+- NPS: widget mobile pós-sessão + `POST /feedback/nps` + tabela `nps_responses`
+- Analytics: PostHog (web via `posthog-js`; mobile via fetch direto)
+- Suporte: Crisp chat widget no dashboard web com user context pré-preenchido
+- SEO/OG: metadata completo, `robots.txt`, `sitemap.xml`
+- EAS Build: `eas.json` + GitHub Actions release workflow para App Store + Play Store
+- Schema Drizzle completo + migrations com RLS (4 migrations)
 
 **Atenção — divergência de nomenclatura:** O PRD v1.1 renomeou `personals`→`professionals` e `students`→`clients`, mas o código ainda usa os nomes antigos (`personals`, `students`). Ao tocar código existente, usar os nomes do código; ao criar tabelas/rotas novas, usar os nomes do PRD v1.1. Sincronizar em refactor dedicado.
-
-Próximos sprints: app mobile, SmartWatch, billing (Mercado Pago), sessões de treino.
 
 ## Arquitetura do API (Fastify)
 
@@ -67,16 +78,25 @@ Próximos sprints: app mobile, SmartWatch, billing (Mercado Pago), sessões de t
 apps/api/src/
 ├── index.ts          # entry: PORT 3001, HOST 0.0.0.0, carrega .env.local
 ├── app.ts            # buildApp(): CORS, rate-limit 100req/min, plugins, rotas
+├── lib/
+│   └── push.ts       # sendPushToUser(): envia Expo push notification
 ├── plugins/
 │   ├── auth.ts       # decorates fastify.authenticate + request.userId/userRole
 │   └── supabase.ts   # lazy-init supabase admin e user clients
 └── routes/
     ├── auth.ts        # /auth/personals/onboard
     ├── personals.ts   # /personals (GET/PATCH)
-    ├── students.ts    # /students (CRUD + invites)
-    ├── exercises.ts   # /exercises (busca com filtros)
-    ├── workouts.ts    # /workouts (CRUD + /generate + /validate + /suggest-exercises + /:id/exercises/:id/substitute)
-    └── ai-chat.ts     # /ai/workout-chat (POST /start, POST /:id/message, GET /:id, POST /:id/authorize, POST /:id/discard, POST /:id/refine)
+    ├── students.ts    # /students (CRUD + invites + /invites/accept)
+    ├── exercises.ts   # /exercises (busca + upload-video com plan check 402)
+    ├── workouts.ts    # /workouts (CRUD + /validate + /suggest-exercises + substitute)
+    ├── sessions.ts    # /workout-sessions (check-in/out + exercise log + heart-rate)
+    ├── progress.ts    # /progress/summary + /progress/sessions/:id
+    ├── conversations.ts # /conversations (chat profissional-cliente + Realtime)
+    ├── notifications.ts # /notifications/push-token (registro Expo)
+    ├── billing.ts     # /billing/subscription + /checkout + /cancel
+    ├── webhooks.ts    # /webhooks/mercadopago (HMAC-SHA256 + status sync)
+    ├── feedback.ts    # /feedback/nps (NPS score 0-10)
+    └── ai-chat.ts     # /ai/workout-chat (start, message, authorize, discard, refine)
 ```
 
 Todas as rotas usam `preHandler: [fastify.authenticate]`. Adicionar nova rota: registrar em `app.ts`.
@@ -96,8 +116,16 @@ packages/db/src/schema/
 ├── workouts.ts       # workouts + workoutExercises
 ├── ai-usage.ts       # aiUsageLog
 ├── ai-chat.ts        # workoutCreationConversations + aiChatMessages (multi-turn)
-└── ...               # anamneses, progress, sessions, subscriptions, audit, notifications
+├── sessions.ts       # workoutSessions + sessionExerciseLogs + heartRateSamples
+├── progress.ts       # progressEntries
+├── chat.ts           # conversations + chatMessages (profissional-cliente)
+├── notifications.ts  # notificationTokens
+├── subscriptions.ts  # subscriptions
+├── feedback.ts       # npsResponses
+└── ...               # anamneses, audit
 ```
+
+Migrations: `0000_great_kid_colt` → `0001_rls_and_triggers` → `0002_ai_chat_conversations` → `0003_nps_responses`.
 
 - `modality` em `exercises` é `text[]` (JSONB) — campo aberto, não enum.
 - `workouts.aiGenerated` (bool) + `aiPromptSnapshot` (JSONB) rastreiam origem da IA.
@@ -153,15 +181,24 @@ Todos os schemas de output da IA ficam em `packages/shared/src/validators/ai.ts`
 ```
 apps/web/src/
 ├── middleware.ts      # redireciona /dashboard→/login se não autenticado; /onboarding→/dashboard se já onboardado
+├── lib/
+│   ├── posthog.ts     # initPostHog(), trackEvent(), trackPageView()
+│   └── api.ts         # apiFetch helper tipado
+├── components/
+│   ├── posthog-provider.tsx  # pageview automático via usePathname
+│   └── crisp-chat.tsx        # widget Crisp com user context
 └── app/
+    ├── layout.tsx     # OG/Twitter metadata + PostHogProvider
     ├── (auth)/        # /login, /onboarding, /callback
     ├── (dashboard)/
+    │   ├── layout.tsx # Sidebar + CrispChat
     │   └── dashboard/
-    │       ├── students/
+    │       ├── students/      # lista + detalhe (com chat-section)
     │       ├── workouts/
-    │       │   ├── chat/    # /dashboard/workouts/chat (UI de criação via chat)
+    │       │   ├── chat/      # /dashboard/workouts/chat (UI de criação via chat)
     │       │   ├── new/
-    │       │   └── [id]/
+    │       │   └── [id]/      # detalhe + AiValidate + AiSubstituteButton
+    │       ├── billing/       # tela de planos + PlanCards client component
     │       └── settings/
     └── (marketing)/   # landing page
 ```
@@ -204,12 +241,30 @@ Auth via `@supabase/ssr` (SSR-safe). State management: Zustand + TanStack Query.
 ## Variáveis de ambiente esperadas
 
 ```bash
+# Supabase / DB
 SUPABASE_URL=, SUPABASE_ANON_KEY=, SUPABASE_SERVICE_ROLE_KEY=, DATABASE_URL=
+
+# OpenAI
 OPENAI_API_KEY=, OPENAI_MODEL_DEFAULT=gpt-4o-mini, OPENAI_MODEL_PREMIUM=gpt-4o
+
+# Mercado Pago
 MP_ACCESS_TOKEN=, MP_WEBHOOK_SECRET=
+
+# Cloudflare
 CLOUDFLARE_ACCOUNT_ID=, CLOUDFLARE_R2_ACCESS_KEY=, CLOUDFLARE_R2_SECRET_KEY=
 CLOUDFLARE_R2_BUCKET=athletiqlab-videos, CLOUDFLARE_STREAM_TOKEN=
-APP_URL=, API_URL=, SENTRY_DSN=, LOGTAIL_TOKEN=, POSTHOG_KEY=
+
+# App
+APP_URL=, API_URL=, SENTRY_DSN=, LOGTAIL_TOKEN=
+
+# Analytics / Suporte (web: NEXT_PUBLIC_*, mobile: EXPO_PUBLIC_*)
+NEXT_PUBLIC_POSTHOG_KEY=, NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+NEXT_PUBLIC_CRISP_WEBSITE_ID=
+EXPO_PUBLIC_POSTHOG_KEY=, EXPO_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+EXPO_PUBLIC_APP_VERSION=1.0.0
+
+# EAS / GitHub Actions secrets (não entram no .env, só em CI)
+# EXPO_TOKEN, APPLE_ID, ASC_APP_ID, APPLE_TEAM_ID, GOOGLE_SERVICE_ACCOUNT_KEY_PATH
 ```
 
 ## O que NÃO fazer
