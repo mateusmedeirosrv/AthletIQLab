@@ -1,9 +1,21 @@
-import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, ne, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
-import { db, personals, personalInvites, students } from '@athletiqlab/db'
+import { db, personals, personalInvites, students, anamneses } from '@athletiqlab/db'
 import { PLAN_LIMITS } from '@athletiqlab/shared'
+
+const anamneseBodySchema = z.object({
+  weightKg: z.string().optional(),
+  heightCm: z.string().optional(),
+  bodyFatPct: z.string().optional(),
+  goal: z.enum(['hypertrophy', 'weight_loss', 'conditioning', 'rehab', 'general_health']),
+  experienceLevel: z.enum(['beginner', 'intermediate', 'advanced']),
+  weeklyFrequency: z.number().int().min(1).max(7),
+  restrictions: z.array(z.string()).default([]),
+  medications: z.array(z.string()).default([]),
+  medicalNotes: z.string().max(2000).optional(),
+})
 
 const acceptInviteSchema = z.object({
   inviteCode: z.string().min(1),
@@ -169,5 +181,85 @@ export const studentRoutes: FastifyPluginAsync = async (fastify) => {
       .from(personalInvites)
       .where(eq(personalInvites.personalId, request.userId))
     return invites
+  })
+
+  // GET /students/:id/anamnese — latest anamnese for a student (personal only)
+  fastify.get('/:id/anamnese', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [student] = await db
+      .select({ userId: students.userId })
+      .from(students)
+      .where(and(eq(students.userId, id), eq(students.personalId, request.userId)))
+      .limit(1)
+
+    if (!student) return reply.notFound('Aluno não encontrado')
+
+    const [anamnese] = await db
+      .select()
+      .from(anamneses)
+      .where(eq(anamneses.studentId, id))
+      .orderBy(desc(anamneses.createdAt))
+      .limit(1)
+
+    if (!anamnese) return reply.notFound('Anamnese não preenchida')
+    return { data: anamnese }
+  })
+
+  // GET /students/:id/anamnese/status
+  fastify.get(
+    '/:id/anamnese/status',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+
+      const [student] = await db
+        .select({ userId: students.userId })
+        .from(students)
+        .where(and(eq(students.userId, id), eq(students.personalId, request.userId)))
+        .limit(1)
+
+      if (!student) return reply.notFound('Aluno não encontrado')
+
+      const [latest] = await db
+        .select({ updatedAt: anamneses.updatedAt })
+        .from(anamneses)
+        .where(eq(anamneses.studentId, id))
+        .orderBy(desc(anamneses.createdAt))
+        .limit(1)
+
+      return { data: { filled: !!latest, lastUpdated: latest?.updatedAt ?? null } }
+    },
+  )
+
+  // POST /students/:id/anamnese — create new anamnese version
+  fastify.post('/:id/anamnese', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const parsed = anamneseBodySchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')
+    }
+
+    const [student] = await db
+      .select({ userId: students.userId })
+      .from(students)
+      .where(and(eq(students.userId, id), eq(students.personalId, request.userId)))
+      .limit(1)
+
+    if (!student) return reply.notFound('Aluno não encontrado')
+
+    const { restrictions, medications, ...rest } = parsed.data
+    const [created] = await db
+      .insert(anamneses)
+      .values({
+        studentId: id,
+        ...rest,
+        restrictions: JSON.stringify(restrictions),
+        medications: JSON.stringify(medications),
+        signedAt: new Date(),
+      })
+      .returning()
+
+    return reply.code(201).send({ data: created })
   })
 }
