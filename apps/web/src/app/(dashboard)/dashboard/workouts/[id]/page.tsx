@@ -5,6 +5,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { AiValidate } from './ai-validate'
+import { AiSubstituteButton } from './ai-substitute'
 
 interface WorkoutExercise {
   id: string
@@ -103,17 +105,32 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
           <Badge variant={status.variant}>{status.label}</Badge>
         </div>
 
-        {workout.status === 'draft' && (
-          <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {workout.status === 'draft' && (
             <PublishButton workoutId={workout.id} token={session.access_token} />
-          </div>
-        )}
+          )}
+          {workout.exercises.length > 0 && (
+            <AiValidate workoutId={workout.id} token={session.access_token} />
+          )}
+        </div>
       </div>
 
-      {warmUp.length > 0 && <ExerciseSection title="Aquecimento" exercises={warmUp} />}
+      {warmUp.length > 0 && (
+        <ExerciseSection
+          title="Aquecimento"
+          exercises={warmUp}
+          workoutId={workout.id}
+          token={session.access_token}
+        />
+      )}
 
       {mainExercises.length > 0 ? (
-        <ExerciseSection title="Exercícios" exercises={mainExercises} />
+        <ExerciseSection
+          title="Exercícios"
+          exercises={mainExercises}
+          workoutId={workout.id}
+          token={session.access_token}
+        />
       ) : (
         <div className="rounded-xl border border-dashed border-neutral-200 p-8 text-center text-sm text-neutral-500">
           Nenhum exercício adicionado.
@@ -123,7 +140,17 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
   )
 }
 
-function ExerciseSection({ title, exercises }: { title: string; exercises: WorkoutExercise[] }) {
+function ExerciseSection({
+  title,
+  exercises,
+  workoutId,
+  token,
+}: {
+  title: string
+  exercises: WorkoutExercise[]
+  workoutId: string
+  token: string
+}) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
       <div className="border-b border-neutral-100 bg-neutral-50 px-5 py-3">
@@ -139,22 +166,32 @@ function ExerciseSection({ title, exercises }: { title: string; exercises: Worko
           }
 
           return (
-            <div key={ex.id} className="flex items-start gap-4 px-5 py-4">
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-neutral-900">{ex.exerciseName}</p>
-                {muscleGroups.length > 0 && (
-                  <p className="mt-0.5 text-xs text-neutral-400">{muscleGroups.join(', ')}</p>
-                )}
-                <p className="mt-1 text-sm text-neutral-600">
-                  {ex.sets}x{ex.reps}
-                  {ex.load ? ` · ${ex.load}` : ''}
-                  {ex.restSeconds ? ` · ${ex.restSeconds}s descanso` : ''}
-                  {ex.tempo ? ` · ${ex.tempo}` : ''}
-                </p>
-                {ex.notes && <p className="mt-0.5 text-xs italic text-neutral-400">{ex.notes}</p>}
+            <div key={ex.id} className="px-5 py-4">
+              <div className="flex items-start gap-4">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-neutral-900">{ex.exerciseName}</p>
+                    <AiSubstituteButton
+                      workoutId={workoutId}
+                      workoutExerciseId={ex.id}
+                      exerciseName={ex.exerciseName}
+                      token={token}
+                    />
+                  </div>
+                  {muscleGroups.length > 0 && (
+                    <p className="mt-0.5 text-xs text-neutral-400">{muscleGroups.join(', ')}</p>
+                  )}
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {ex.sets}x{ex.reps}
+                    {ex.load ? ` · ${ex.load}` : ''}
+                    {ex.restSeconds ? ` · ${ex.restSeconds}s descanso` : ''}
+                    {ex.tempo ? ` · ${ex.tempo}` : ''}
+                  </p>
+                  {ex.notes && <p className="mt-0.5 text-xs italic text-neutral-400">{ex.notes}</p>}
+                </div>
               </div>
             </div>
           )
