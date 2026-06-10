@@ -3,7 +3,8 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { db, exercises } from '@athletiqlab/db'
+import { db, exercises, personals } from '@athletiqlab/db'
+import { PLAN_LIMITS } from '@athletiqlab/shared'
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024 // 500 MB
@@ -140,6 +141,22 @@ export const exerciseRoutes: FastifyPluginAsync = async (fastify) => {
 
   // POST /exercises/upload-video — get presigned R2 POST URL
   fastify.post('/upload-video', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    // Check plan allows custom video uploads
+    const [personal] = await db
+      .select({ plan: personals.plan })
+      .from(personals)
+      .where(eq(personals.userId, request.userId))
+      .limit(1)
+
+    if (personal && !PLAN_LIMITS[personal.plan].customVideos) {
+      return reply.code(402).send({
+        error: {
+          code: 'PLAN_LIMIT_EXCEEDED',
+          message: `Upload de vídeo próprio está disponível nos planos Pro e Elite. Faça upgrade para continuar.`,
+        },
+      })
+    }
+
     const parsed = uploadVideoSchema.safeParse(request.body)
     if (!parsed.success) {
       return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')

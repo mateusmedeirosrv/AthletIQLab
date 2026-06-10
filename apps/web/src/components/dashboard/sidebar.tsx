@@ -3,7 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
-import { LayoutDashboard, Users, Dumbbell, BookOpen, Settings, LogOut } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  Dumbbell,
+  BookOpen,
+  CreditCard,
+  Settings,
+  LogOut,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/app/(auth)/actions'
 
@@ -12,6 +20,7 @@ type NavRoute =
   | '/dashboard/students'
   | '/dashboard/workouts'
   | '/dashboard/exercises'
+  | '/dashboard/billing'
   | '/dashboard/settings'
 
 const navItems: { href: NavRoute; label: string; icon: LucideIcon; exact?: boolean }[] = [
@@ -19,6 +28,7 @@ const navItems: { href: NavRoute; label: string; icon: LucideIcon; exact?: boole
   { href: '/dashboard/students', label: 'Alunos', icon: Users },
   { href: '/dashboard/workouts', label: 'Treinos', icon: Dumbbell },
   { href: '/dashboard/exercises', label: 'Exercícios', icon: BookOpen },
+  { href: '/dashboard/billing', label: 'Cobrança', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
 ]
 
