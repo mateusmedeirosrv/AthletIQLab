@@ -1,9 +1,14 @@
-import { and, eq, ne, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { db, personals, personalInvites, students } from '@athletiqlab/db'
 import { PLAN_LIMITS } from '@athletiqlab/shared'
+
+const acceptInviteSchema = z.object({
+  inviteCode: z.string().min(1),
+  name: z.string().min(2).max(100),
+})
 
 const updateStudentSchema = z.object({
   status: z.enum(['active', 'paused', 'removed']).optional(),
@@ -11,6 +16,74 @@ const updateStudentSchema = z.object({
 })
 
 export const studentRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /students/me — returns the student profile for the authenticated client
+  fastify.get('/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const [student] = await db
+      .select()
+      .from(students)
+      .where(eq(students.userId, request.userId))
+      .limit(1)
+
+    if (!student) return reply.notFound('Perfil de aluno não encontrado')
+    return { data: student }
+  })
+
+  // POST /students/invites/accept — client accepts a professional's invite code
+  fastify.post(
+    '/invites/accept',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const parsed = acceptInviteSchema.safeParse(request.body)
+      if (!parsed.success) {
+        return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')
+      }
+
+      const { inviteCode, name } = parsed.data
+      const now = new Date()
+
+      const [invite] = await db
+        .select()
+        .from(personalInvites)
+        .where(
+          and(
+            eq(personalInvites.code, inviteCode),
+            eq(personalInvites.isActive, true),
+            isNull(personalInvites.usedAt),
+            gt(personalInvites.expiresAt, now),
+          ),
+        )
+        .limit(1)
+
+      if (!invite) return reply.notFound('Código de convite inválido ou expirado')
+
+      // Check if this user already has a student profile (prevent duplicate)
+      const [existing] = await db
+        .select({ userId: students.userId })
+        .from(students)
+        .where(eq(students.userId, request.userId))
+        .limit(1)
+
+      if (existing) {
+        return reply.conflict('Você já está vinculado a um profissional')
+      }
+
+      const [student] = await db
+        .insert(students)
+        .values({
+          userId: request.userId,
+          personalId: invite.personalId,
+          name,
+          status: 'active',
+          inviteAcceptedAt: now,
+        })
+        .returning()
+
+      await db.update(personalInvites).set({ usedAt: now }).where(eq(personalInvites.id, invite.id))
+
+      return reply.code(201).send({ data: student })
+    },
+  )
+
   // List students for this personal
   fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, _reply) => {
     const list = await db

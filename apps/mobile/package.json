@@ -13,17 +13,23 @@
   "dependencies": {
     "@athletiqlab/shared": "workspace:*",
     "@athletiqlab/ui": "workspace:*",
+    "@expo/vector-icons": "~14.0.4",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-query": "^5.62.11",
     "expo": "~52.0.0",
+    "expo-auth-session": "~6.0.3",
+    "expo-haptics": "~14.0.1",
+    "expo-linear-gradient": "~14.0.2",
     "expo-router": "~4.0.0",
     "expo-status-bar": "~2.0.0",
     "expo-video": "~2.0.0",
+    "expo-web-browser": "~14.0.2",
     "react": "18.3.1",
     "react-native": "0.76.5",
     "react-native-reanimated": "~3.16.0",
     "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.4.0"
+    "react-native-screens": "~4.4.0",
+    "react-native-svg": "15.8.0"
   },
   "devDependencies": {
     "@athletiqlab/eslint-config": "workspace:*",

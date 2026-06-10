@@ -162,11 +162,13 @@ function defined<T extends Record<string, unknown>>(obj: T): T {
 export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
   // ── List workouts ──────────────────────────────────────────────────────────
   fastify.get('/', { preHandler: [fastify.authenticate] }, async (request) => {
-    const list = await db
-      .select()
-      .from(workouts)
-      .where(eq(workouts.personalId, request.userId))
-      .orderBy(workouts.createdAt)
+    // Students see only their published workouts; personals see all their own workouts
+    const filter =
+      request.userRole === 'student'
+        ? and(eq(workouts.studentId, request.userId), eq(workouts.status, 'published'))
+        : eq(workouts.personalId, request.userId)
+
+    const list = await db.select().from(workouts).where(filter).orderBy(workouts.createdAt)
 
     return { data: list }
   })

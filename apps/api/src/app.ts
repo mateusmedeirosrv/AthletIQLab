@@ -8,6 +8,7 @@ import { aiChatRoutes } from './routes/ai-chat'
 import { authRoutes } from './routes/auth'
 import { exerciseRoutes } from './routes/exercises'
 import { personalRoutes } from './routes/personals'
+import { sessionRoutes } from './routes/sessions'
 import { studentRoutes } from './routes/students'
 import { workoutRoutes } from './routes/workouts'
 
@@ -38,6 +39,7 @@ export async function buildApp() {
   await app.register(studentRoutes, { prefix: '/students' })
   await app.register(exerciseRoutes, { prefix: '/exercises' })
   await app.register(workoutRoutes, { prefix: '/workouts' })
+  await app.register(sessionRoutes, { prefix: '/workout-sessions' })
   await app.register(aiChatRoutes, { prefix: '/ai/workout-chat' })
 
   return app
