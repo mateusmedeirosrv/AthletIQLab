@@ -46,19 +46,20 @@ pnpm --filter=<package> exec vitest run src/path/to/test.spec.ts
 
 Testes: **Vitest** para unitário e integração de API; **Playwright** para E2E web; **Maestro** para E2E mobile.
 
-## Estado atual — Sprints 1–4 concluídos
+## Estado atual — Sprints 1–6 concluídos
 
 O que está implementado:
 
 - Auth (Supabase, Google OAuth + magic link), onboarding do profissional, middleware de rotas
 - Dashboard web: lista de alunos, lista/detalhe/criação de treinos, configurações
-- API Fastify: rotas `/auth`, `/personals`, `/students`, `/exercises`, `/workouts`
-- AI (single-shot): generate, suggest-exercises, substitute, validate — tudo em `packages/ai`
+- API Fastify: rotas `/auth`, `/personals`, `/students`, `/exercises`, `/workouts`, `/ai/workout-chat`
+- AI single-shot: generate, suggest-exercises, substitute, validate — tudo em `packages/ai`
+- AI multi-turn: chat conversacional para criação de treino (`/ai/workout-chat`) com estado persistido
 - Schema Drizzle completo + migrations com RLS
 
 **Atenção — divergência de nomenclatura:** O PRD v1.1 renomeou `personals`→`professionals` e `students`→`clients`, mas o código ainda usa os nomes antigos (`personals`, `students`). Ao tocar código existente, usar os nomes do código; ao criar tabelas/rotas novas, usar os nomes do PRD v1.1. Sincronizar em refactor dedicado.
 
-Próximos sprints: chat multi-turn com IA, app mobile, SmartWatch, billing (Mercado Pago), sessões de treino.
+Próximos sprints: app mobile, SmartWatch, billing (Mercado Pago), sessões de treino.
 
 ## Arquitetura do API (Fastify)
 
@@ -74,7 +75,8 @@ apps/api/src/
     ├── personals.ts   # /personals (GET/PATCH)
     ├── students.ts    # /students (CRUD + invites)
     ├── exercises.ts   # /exercises (busca com filtros)
-    └── workouts.ts    # /workouts (CRUD + /generate + /validate + /suggest-exercises + /:id/exercises/:id/substitute)
+    ├── workouts.ts    # /workouts (CRUD + /generate + /validate + /suggest-exercises + /:id/exercises/:id/substitute)
+    └── ai-chat.ts     # /ai/workout-chat (POST /start, POST /:id/message, GET /:id, POST /:id/authorize, POST /:id/discard, POST /:id/refine)
 ```
 
 Todas as rotas usam `preHandler: [fastify.authenticate]`. Adicionar nova rota: registrar em `app.ts`.
@@ -93,28 +95,40 @@ packages/db/src/schema/
 ├── exercises.ts      # exercises + enums
 ├── workouts.ts       # workouts + workoutExercises
 ├── ai-usage.ts       # aiUsageLog
-└── ...               # anamneses, chat, progress, sessions, subscriptions, audit, notifications
+├── ai-chat.ts        # workoutCreationConversations + aiChatMessages (multi-turn)
+└── ...               # anamneses, progress, sessions, subscriptions, audit, notifications
 ```
 
 - `modality` em `exercises` é `text[]` (JSONB) — campo aberto, não enum.
 - `workouts.aiGenerated` (bool) + `aiPromptSnapshot` (JSONB) rastreiam origem da IA.
+- `workoutCreationConversations.status`: `in_progress` | `awaiting_authorization` | `authorized` | `discarded`.
+- `workoutCreationConversations.proposedWorkout` (JSONB): snapshot do treino proposto antes de autorizar.
 - Toda nova tabela com `personalId` ou `studentId` precisa de RLS na migration.
 
 ## Arquitetura de IA (packages/ai)
 
 ```
 packages/ai/src/
-├── client.ts                       # lazy OpenAI init; getOpenAIClient()
-├── prompts/system.ts               # system prompt base — não modificar sem revisão
-├── guardrails/validate-output.ts   # callWithValidation(): rate-limit + retry + log
+├── client.ts                            # lazy OpenAI init; getOpenAIClient()
+├── prompts/system.ts                    # SYSTEM_PROMPT (base fixo) + buildChatSystemPrompt(params) (dinâmico)
+├── guardrails/
+│   ├── validate-output.ts               # callWithValidation(): rate-limit de chamada + retry + log
+│   ├── call-chat-turn.ts                # callChatTurn(): para cada turno do chat; loga em aiUsageLog
+│   └── check-chat-rate-limit.ts         # checkChatRateLimit(): rate-limit por conversa (não por chamada)
 └── workflows/
+    ├── chat-workout-creation.ts         # startConversation(), continueConversation(), proposeWorkout()
     ├── generate-workout.ts
     ├── suggest-exercises.ts
     ├── substitute-exercise.ts
     └── validate-workout.ts
 ```
 
-`callWithValidation()` em `guardrails/validate-output.ts` é o único ponto de chamada à OpenAI:
+**Dois sistemas de rate-limit distintos:**
+
+- `callWithValidation()` — conta chamadas individuais à OpenAI por mês (single-shot workflows)
+- `checkChatRateLimit()` — conta conversas `authorized` ou `discarded` por mês (chat workflow)
+
+`callWithValidation()` em `guardrails/validate-output.ts` é o ponto de chamada para workflows single-shot:
 
 1. Verifica rate limit (conta chamadas no mês via `aiUsageLog`)
 2. Chama OpenAI com `response_format: { type: "json_object" }`
@@ -127,11 +141,12 @@ Todos os schemas de output da IA ficam em `packages/shared/src/validators/ai.ts`
 ## Regras de IA
 
 1. Toda chamada à OpenAI passa por `packages/ai` — nunca chamar diretamente do front ou da api.
-2. System prompt base (`packages/ai/src/prompts/system.ts`) é fixo — não modificar sem revisão.
-3. Criação de treino via chat é **multi-turn**: estado em `workout_creation_conversations` + `ai_chat_messages`. Treino só entra em `workouts` após `POST /ai/workout-chat/:conv_id/authorize`.
-4. Output validado com Zod. Se inválido: 1 retry; se falhar, erro `AI_OUTPUT_INVALID`.
-5. Toda chamada à OpenAI registra em `ai_usage_log` com `conversation_id` quando aplicável.
-6. Rate limit por plano: `PLAN_LIMITS` em `packages/shared/src/constants/plans.ts`.
+2. `SYSTEM_PROMPT` em `packages/ai/src/prompts/system.ts` é fixo — não modificar sem revisão. O `buildChatSystemPrompt(params)` o estende dinamicamente com a biblioteca de exercícios e tipo de profissional.
+3. Criação de treino via chat é **multi-turn**: estado em `workoutCreationConversations` + `aiChatMessages`. Treino só entra em `workouts` após `POST /ai/workout-chat/:id/authorize`.
+4. **Sentinelas do chat**: a IA emite `[READY_TO_PROPOSE]` quando tem informação suficiente para propor; e `<!--QR:[...]-->` no final de mensagens para quick-replies sugeridos.
+5. Output validado com Zod. Se inválido: 1 retry; se falhar, erro `AI_OUTPUT_INVALID`.
+6. Toda chamada à OpenAI registra em `ai_usage_log` com `conversation_id` quando aplicável.
+7. Rate limit por plano: `PLAN_LIMITS` em `packages/shared/src/constants/plans.ts`.
 
 ## Arquitetura web (Next.js)
 
@@ -140,7 +155,14 @@ apps/web/src/
 ├── middleware.ts      # redireciona /dashboard→/login se não autenticado; /onboarding→/dashboard se já onboardado
 └── app/
     ├── (auth)/        # /login, /onboarding, /callback
-    ├── (dashboard)/   # /dashboard e sub-rotas (students, workouts, settings)
+    ├── (dashboard)/
+    │   └── dashboard/
+    │       ├── students/
+    │       ├── workouts/
+    │       │   ├── chat/    # /dashboard/workouts/chat (UI de criação via chat)
+    │       │   ├── new/
+    │       │   └── [id]/
+    │       └── settings/
     └── (marketing)/   # landing page
 ```
 
