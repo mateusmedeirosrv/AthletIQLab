@@ -276,12 +276,12 @@ MVP estimado em **28-30 semanas (~7 meses)** com solo developer + Claude Code (e
 
 **Sprint 14 (Beta + Lançamento)** — Semanas 29-30
 
-- [ ] Beta fechado: 10-20 profissionais (mix de personal, fisio, treinador) por 4 semanas
-- [ ] Coleta de feedback estruturado (NPS + entrevistas)
-- [ ] Ajustes de UX e correção de bugs críticos
-- [ ] Submissão à App Store e Google Play
-- [ ] Lançamento soft: rede de contatos + anúncio Instagram
-- [ ] Configuração de suporte: Crisp ou Intercom Lite
+- [x] Beta fechado: 10-20 profissionais (mix de personal, fisio, treinador) por 4 semanas
+- [x] Coleta de feedback estruturado (NPS + entrevistas)
+- [x] Ajustes de UX e correção de bugs críticos
+- [x] Submissão à App Store e Google Play
+- [x] Lançamento soft: rede de contatos + anúncio Instagram
+- [x] Configuração de suporte: Crisp ou Intercom Lite
 
 ### Fora do MVP (Fase 6+)
 
