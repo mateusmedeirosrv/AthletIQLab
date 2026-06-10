@@ -24,7 +24,7 @@
       },
       "package": "com.athletiqlab.app"
     },
-    "plugins": ["expo-router", "react-native-reanimated", "expo-video"],
+    "plugins": ["expo-router", "react-native-reanimated", "expo-video", "./plugins/withWatchApp"],
     "experiments": {
       "typedRoutes": true
     }

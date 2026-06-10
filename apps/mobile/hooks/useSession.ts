@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { apiClient } from '../lib/api'
+import { useWatch } from './useWatch'
 
 export type SessionPhase = 'idle' | 'in_progress' | 'checking_out' | 'done'
 
@@ -25,6 +26,7 @@ export function useSession(): UseSessionResult {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [phase, setPhase] = useState<SessionPhase>('idle')
   const [exerciseStates, setExerciseStates] = useState<Record<string, ExerciseState>>({})
+  const { sendExercise, sendSessionEnd } = useWatch(sessionId)
 
   const startSession = useCallback(async (workoutId: string): Promise<string> => {
     const res = await apiClient.post<{ id: string }>('/workout-sessions', { workoutId })
@@ -44,7 +46,16 @@ export function useSession(): UseSessionResult {
   }, [])
 
   const logSet = useCallback(
-    async (workoutExerciseId: string, reps: number, load: number) => {
+    async (
+      workoutExerciseId: string,
+      reps: number,
+      load: number,
+      opts?: {
+        exerciseName?: string
+        totalSets?: number
+        restSeconds?: number
+      },
+    ) => {
       if (!sessionId) return
 
       setExerciseStates((prev) => {
@@ -62,10 +73,21 @@ export function useSession(): UseSessionResult {
           loadPerSet: [...current.loadPerSet, load],
         }
         void persistLog(sessionId, workoutExerciseId, updated)
+        // Notify watch
+        void sendExercise({
+          sessionId,
+          exerciseName: opts?.exerciseName ?? '',
+          setNumber: updated.completedSets,
+          totalSets: opts?.totalSets ?? 0,
+          reps,
+          loadKg: load > 0 ? load : null,
+          phase: 'active',
+          restSeconds: opts?.restSeconds ?? 60,
+        })
         return { ...prev, [workoutExerciseId]: updated }
       })
     },
-    [sessionId, persistLog],
+    [sessionId, persistLog, sendExercise],
   )
 
   const skipExercise = useCallback(
@@ -88,10 +110,13 @@ export function useSession(): UseSessionResult {
     async (opts?: { endPhotoUrl?: string; rpe?: number; clientNotes?: string }) => {
       if (!sessionId) return
       setPhase('checking_out')
-      await apiClient.post(`/workout-sessions/${sessionId}/end`, opts ?? {})
+      await Promise.all([
+        apiClient.post(`/workout-sessions/${sessionId}/end`, opts ?? {}),
+        sendSessionEnd(),
+      ])
       setPhase('done')
     },
-    [sessionId],
+    [sessionId, sendSessionEnd],
   )
 
   return { sessionId, phase, exerciseStates, startSession, logSet, skipExercise, endSession }

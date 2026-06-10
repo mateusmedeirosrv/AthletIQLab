@@ -34,6 +34,7 @@
   "devDependencies": {
     "@athletiqlab/eslint-config": "workspace:*",
     "@athletiqlab/typescript-config": "workspace:*",
+    "@expo/config-plugins": "^56.0.8",
     "@types/react": "~18.3.12",
     "typescript": "^5.7.3"
   }

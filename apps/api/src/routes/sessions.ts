@@ -1,8 +1,9 @@
-import { and, eq } from 'drizzle-orm'
+import { and, avg, eq, max, sql } from 'drizzle-orm'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import {
   db,
+  heartRateSamples,
   sessionExerciseLogs,
   workoutExercises,
   workouts,
@@ -117,6 +118,18 @@ export const sessionRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
+    // Compute HR stats from samples
+    const hrStats = await db
+      .select({
+        avgBpm: avg(heartRateSamples.bpm),
+        maxBpm: max(heartRateSamples.bpm),
+      })
+      .from(heartRateSamples)
+      .where(eq(heartRateSamples.sessionId, id))
+
+    const avgBpm = hrStats[0]?.avgBpm ? Math.round(Number(hrStats[0].avgBpm)) : null
+    const maxBpm = hrStats[0]?.maxBpm ?? null
+
     const { rpe, clientNotes, endPhotoUrl } = parsed.data
     const [updated] = await db
       .update(workoutSessions)
@@ -126,6 +139,8 @@ export const sessionRoutes: FastifyPluginAsync = async (fastify) => {
         rpe,
         studentNotes: clientNotes,
         totalVolumeKg: totalVolumeKg > 0 ? String(totalVolumeKg) : undefined,
+        avgHrBpm: avgBpm ?? undefined,
+        maxHrBpm: maxBpm ?? undefined,
         updatedAt: new Date(),
       })
       .where(eq(workoutSessions.id, id))
@@ -194,4 +209,78 @@ export const sessionRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(201).send({ data: created })
     },
   )
+
+  // POST /workout-sessions/:id/heart-rate — batch insert HR samples from watch
+  fastify.post(
+    '/:id/heart-rate',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+
+      const bodySchema = z.object({
+        samples: z
+          .array(
+            z.object({
+              timestamp: z.string().datetime(),
+              bpm: z.number().int().min(30).max(250),
+            }),
+          )
+          .min(1)
+          .max(200),
+      })
+
+      const parsed = bodySchema.safeParse(request.body)
+      if (!parsed.success) {
+        return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')
+      }
+
+      const [session] = await db
+        .select({ id: workoutSessions.id })
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.id, id), eq(workoutSessions.studentId, request.userId)))
+        .limit(1)
+
+      if (!session) return reply.notFound('Sessão não encontrada')
+
+      await db.insert(heartRateSamples).values(
+        parsed.data.samples.map((s) => ({
+          sessionId: id,
+          timestamp: new Date(s.timestamp),
+          bpm: s.bpm,
+        })),
+      )
+
+      return reply.code(201).send({ data: { inserted: parsed.data.samples.length } })
+    },
+  )
+
+  // GET /workout-sessions/:id/heart-rate — fetch HR samples for a session
+  fastify.get('/:id/heart-rate', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [session] = await db
+      .select({ id: workoutSessions.id })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.id, id),
+          sql`(${workoutSessions.studentId} = ${request.userId} OR EXISTS (
+            SELECT 1 FROM workouts w
+            JOIN students s ON s.user_id = ${workoutSessions.studentId}
+            WHERE w.id = ${workoutSessions.workoutId} AND s.personal_id = ${request.userId}
+          ))`,
+        ),
+      )
+      .limit(1)
+
+    if (!session) return reply.notFound('Sessão não encontrada')
+
+    const samples = await db
+      .select()
+      .from(heartRateSamples)
+      .where(eq(heartRateSamples.sessionId, id))
+      .orderBy(heartRateSamples.timestamp)
+
+    return { data: samples }
+  })
 }

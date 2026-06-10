@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>AthletiQLab</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.athletiqlab.app.watchkitapp</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>WKWatchOnly</key>
+    <false/>
+    <key>WKCompanionAppBundleIdentifier</key>
+    <string>com.athletiqlab.app</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>AthletiQLab lê sua frequência cardíaca durante o treino para monitorar esforço e calcular zonas de FC.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>AthletiQLab registra sessões de treino no Apple Health.</string>
+</dict>
+</plist>
