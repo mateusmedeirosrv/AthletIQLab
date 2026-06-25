@@ -25,6 +25,7 @@ export const workouts = pgTable('workouts', {
   modality: text('modality').notNull(),
   estimatedDurationMin: smallint('estimated_duration_min'),
   aiGenerated: boolean('ai_generated').notNull().default(false),
+  isTemplate: boolean('is_template').notNull().default(false),
   aiPromptSnapshot: jsonb('ai_prompt_snapshot'),
   status: workoutStatusEnum('status').notNull().default('draft'),
   publishedAt: timestamp('published_at', { withTimezone: true }),

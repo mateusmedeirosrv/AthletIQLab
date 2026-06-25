@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import { ArrowLeft, Bookmark, Sparkles } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { AiValidate } from './ai-validate'
 import { AiSubstituteButton } from './ai-substitute'
+import { ApplyTemplateButton } from './apply-template-button'
 
 interface WorkoutExercise {
   id: string
@@ -28,6 +29,7 @@ interface WorkoutDetail {
   modality: string
   status: string
   aiGenerated: boolean
+  isTemplate: boolean
   estimatedDurationMin: number | null
   studentId: string | null
   createdAt: string
@@ -96,21 +98,37 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold text-neutral-900">{workout.title}</h1>
               {workout.aiGenerated && <Sparkles className="h-4 w-4 text-blue-500" />}
+              {workout.isTemplate && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                  <Bookmark className="h-3 w-3" />
+                  Template
+                </span>
+              )}
             </div>
             <p className="mt-1 text-sm capitalize text-neutral-500">
               {workout.modality}
               {workout.estimatedDurationMin ? ` · ${workout.estimatedDurationMin} min` : ''}
             </p>
           </div>
-          <Badge variant={status.variant}>{status.label}</Badge>
+          {!workout.isTemplate && <Badge variant={status.variant}>{status.label}</Badge>}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {workout.status === 'draft' && (
+          {!workout.isTemplate && workout.status === 'draft' && (
             <PublishButton workoutId={workout.id} token={session.access_token} />
           )}
-          {workout.exercises.length > 0 && (
+          {!workout.isTemplate && workout.exercises.length > 0 && (
             <AiValidate workoutId={workout.id} token={session.access_token} />
+          )}
+          {!workout.isTemplate && (
+            <SaveAsTemplateButton workoutId={workout.id} token={session.access_token} />
+          )}
+          {workout.isTemplate && (
+            <ApplyTemplateButton
+              workoutId={workout.id}
+              workoutTitle={workout.title}
+              token={session.access_token}
+            />
           )}
         </div>
       </div>
@@ -212,6 +230,27 @@ function PublishButton({ workoutId, token }: { workoutId: string; token: string 
     <form action={publish}>
       <Button type="submit" size="sm">
         Publicar treino
+      </Button>
+    </form>
+  )
+}
+
+function SaveAsTemplateButton({ workoutId, token }: { workoutId: string; token: string }) {
+  async function saveAsTemplate() {
+    'use server'
+    const res = await api.post<{ data: { id: string } }>(
+      `/workouts/${workoutId}/save-as-template`,
+      {},
+      token,
+    )
+    redirect(`/dashboard/workouts/${res.data.id}` as `/dashboard/workouts/${string}`)
+  }
+
+  return (
+    <form action={saveAsTemplate}>
+      <Button type="submit" variant="outline" size="sm">
+        <Bookmark className="mr-1.5 h-3.5 w-3.5" />
+        Salvar como template
       </Button>
     </form>
   )

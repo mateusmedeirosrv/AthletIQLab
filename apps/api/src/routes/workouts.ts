@@ -30,6 +30,7 @@ const createWorkoutSchema = z.object({
   modality: z.string().min(1),
   estimatedDurationMin: z.number().int().min(5).max(240).optional(),
   studentId: z.string().uuid().optional(),
+  isTemplate: z.boolean().default(false),
   exercises: z.array(workoutExerciseInputSchema).optional(),
 })
 
@@ -39,6 +40,12 @@ const updateWorkoutSchema = z.object({
   estimatedDurationMin: z.number().int().min(5).max(240).optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   studentId: z.string().uuid().nullable().optional(),
+  isTemplate: z.boolean().optional(),
+})
+
+const applyTemplateSchema = z.object({
+  studentId: z.string().uuid(),
+  title: z.string().min(2).max(100).optional(),
 })
 
 const generateWorkoutSchema = z.object({
@@ -166,7 +173,7 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
     const filter =
       request.userRole === 'student'
         ? and(eq(workouts.studentId, request.userId), eq(workouts.status, 'published'))
-        : eq(workouts.personalId, request.userId)
+        : and(eq(workouts.personalId, request.userId), eq(workouts.isTemplate, false))
 
     const list = await db.select().from(workouts).where(filter).orderBy(workouts.createdAt)
 
@@ -194,6 +201,16 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     return reply.code(201).send({ data: workout })
+  })
+
+  // ── List templates ────────────────────────────────────────────────────────
+  fastify.get('/templates', { preHandler: [fastify.authenticate] }, async (request) => {
+    const list = await db
+      .select()
+      .from(workouts)
+      .where(and(eq(workouts.personalId, request.userId), eq(workouts.isTemplate, true)))
+      .orderBy(workouts.createdAt)
+    return { data: list }
   })
 
   // ── Get workout detail ─────────────────────────────────────────────────────
@@ -264,6 +281,151 @@ export const workoutRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (!deleted) return reply.notFound('Treino não encontrado')
     return reply.code(204).send()
+  })
+
+  // ── Save workout as template ──────────────────────────────────────────────
+  fastify.post(
+    '/:id/save-as-template',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+
+      const [original] = await db
+        .select()
+        .from(workouts)
+        .where(
+          and(
+            eq(workouts.id, id),
+            eq(workouts.personalId, request.userId),
+            eq(workouts.isTemplate, false),
+          ),
+        )
+        .limit(1)
+
+      if (!original) return reply.notFound('Treino não encontrado ou já é um template')
+
+      const exItems = await db
+        .select({
+          exerciseId: workoutExercises.exerciseId,
+          order: workoutExercises.order,
+          sets: workoutExercises.sets,
+          reps: workoutExercises.reps,
+          load: workoutExercises.load,
+          restSeconds: workoutExercises.restSeconds,
+          notes: workoutExercises.notes,
+          tempo: workoutExercises.tempo,
+        })
+        .from(workoutExercises)
+        .where(eq(workoutExercises.workoutId, id))
+
+      const [template] = await db
+        .insert(workouts)
+        .values(
+          defined({
+            personalId: request.userId,
+            title: original.title,
+            modality: original.modality,
+            estimatedDurationMin: original.estimatedDurationMin ?? undefined,
+            aiGenerated: original.aiGenerated,
+            isTemplate: true,
+            status: 'draft' as const,
+          }),
+        )
+        .returning()
+
+      if (template && exItems.length > 0) {
+        await db.insert(workoutExercises).values(
+          exItems.map((e) =>
+            defined({
+              workoutId: template.id,
+              exerciseId: e.exerciseId,
+              order: e.order,
+              sets: e.sets,
+              reps: e.reps,
+              load: e.load ?? undefined,
+              restSeconds: e.restSeconds ?? undefined,
+              notes: e.notes ?? undefined,
+              tempo: e.tempo ?? undefined,
+            }),
+          ),
+        )
+      }
+
+      return reply.code(201).send({ data: template })
+    },
+  )
+
+  // ── Apply template to student ──────────────────────────────────────────────
+  fastify.post('/:id/apply', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const parsed = applyTemplateSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')
+    }
+
+    const [template] = await db
+      .select()
+      .from(workouts)
+      .where(
+        and(
+          eq(workouts.id, id),
+          eq(workouts.personalId, request.userId),
+          eq(workouts.isTemplate, true),
+        ),
+      )
+      .limit(1)
+
+    if (!template) return reply.notFound('Template não encontrado')
+
+    const exItems = await db
+      .select({
+        exerciseId: workoutExercises.exerciseId,
+        order: workoutExercises.order,
+        sets: workoutExercises.sets,
+        reps: workoutExercises.reps,
+        load: workoutExercises.load,
+        restSeconds: workoutExercises.restSeconds,
+        notes: workoutExercises.notes,
+        tempo: workoutExercises.tempo,
+      })
+      .from(workoutExercises)
+      .where(eq(workoutExercises.workoutId, id))
+
+    const [newWorkout] = await db
+      .insert(workouts)
+      .values(
+        defined({
+          personalId: request.userId,
+          studentId: parsed.data.studentId,
+          title: parsed.data.title ?? template.title,
+          modality: template.modality,
+          estimatedDurationMin: template.estimatedDurationMin ?? undefined,
+          aiGenerated: template.aiGenerated,
+          isTemplate: false,
+          status: 'draft' as const,
+        }),
+      )
+      .returning()
+
+    if (newWorkout && exItems.length > 0) {
+      await db.insert(workoutExercises).values(
+        exItems.map((e) =>
+          defined({
+            workoutId: newWorkout.id,
+            exerciseId: e.exerciseId,
+            order: e.order,
+            sets: e.sets,
+            reps: e.reps,
+            load: e.load ?? undefined,
+            restSeconds: e.restSeconds ?? undefined,
+            notes: e.notes ?? undefined,
+            tempo: e.tempo ?? undefined,
+          }),
+        ),
+      )
+    }
+
+    return reply.code(201).send({ data: newWorkout })
   })
 
   // ── AI: Generate workout ───────────────────────────────────────────────────
