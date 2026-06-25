@@ -34,7 +34,9 @@ const createExerciseSchema = z.object({
   contraindications: z.array(z.string()).default([]),
 })
 
-const updateExerciseSchema = createExerciseSchema.partial()
+const updateExerciseSchema = createExerciseSchema.partial().extend({
+  videoUrl: z.string().url().optional(),
+})
 
 const uploadVideoSchema = z.object({
   filename: z.string().min(1),
