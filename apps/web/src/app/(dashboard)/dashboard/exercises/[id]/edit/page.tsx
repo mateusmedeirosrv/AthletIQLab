@@ -16,6 +16,7 @@ interface Exercise {
   videoProvider: string | null
   source: string
   ownerId: string | null
+  isPublic: boolean
 }
 
 interface Props {

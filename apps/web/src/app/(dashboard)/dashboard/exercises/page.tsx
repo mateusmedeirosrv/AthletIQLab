@@ -12,6 +12,7 @@ interface Exercise {
   level: string
   modality: string
   source: string
+  isPublic: boolean
   videoProvider: string | null
   videoUrl: string | null
   createdAt: string
@@ -118,6 +119,11 @@ export default async function ExercisesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
+                  {ex.isPublic && (
+                    <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                      Público
+                    </span>
+                  )}
                   <Badge variant={sourceLabel[ex.source]?.variant ?? 'secondary'}>
                     {sourceLabel[ex.source]?.label ?? ex.source}
                   </Badge>

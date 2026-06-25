@@ -18,6 +18,7 @@ interface Exercise {
   videoUrl: string | null
   videoProvider: string | null
   source: string
+  isPublic: boolean
 }
 
 interface Props {
@@ -53,6 +54,8 @@ export function EditExerciseForm({ exercise, token }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [toggling, setToggling] = useState(false)
+  const [isPublic, setIsPublic] = useState(exercise.isPublic)
   const [error, setError] = useState<string | null>(null)
 
   const isExternalLink = exercise.videoProvider === 'youtube' || exercise.videoProvider === 'vimeo'
@@ -110,6 +113,24 @@ export function EditExerciseForm({ exercise, token }: Props) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleTogglePublic() {
+    setToggling(true)
+    setError(null)
+    try {
+      const endpoint = isPublic ? 'unpublish' : 'publish'
+      const res = await fetch(`${API_URL}/exercises/${exercise.id}/${endpoint}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error()
+      setIsPublic(!isPublic)
+    } catch {
+      setError('Erro ao alterar visibilidade')
+    } finally {
+      setToggling(false)
     }
   }
 
@@ -239,6 +260,26 @@ export function EditExerciseForm({ exercise, token }: Props) {
           Vídeo enviado via R2. Para trocar, exclua e crie um novo exercício.
         </p>
       )}
+
+      <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-neutral-900">Marketplace</p>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {isPublic
+              ? 'Visível para outros profissionais importarem'
+              : 'Apenas você pode ver este exercício'}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant={isPublic ? 'outline' : 'secondary'}
+          size="sm"
+          onClick={handleTogglePublic}
+          disabled={toggling || saving || deleting}
+        >
+          {toggling ? '...' : isPublic ? 'Tornar privado' : 'Publicar'}
+        </Button>
+      </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

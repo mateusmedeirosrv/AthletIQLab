@@ -8,6 +8,7 @@ import {
   Users,
   Dumbbell,
   BookOpen,
+  Globe,
   CreditCard,
   Settings,
   LogOut,
@@ -20,6 +21,7 @@ type NavRoute =
   | '/dashboard/students'
   | '/dashboard/workouts'
   | '/dashboard/exercises'
+  | '/dashboard/marketplace'
   | '/dashboard/billing'
   | '/dashboard/settings'
 
@@ -28,6 +30,7 @@ const navItems: { href: NavRoute; label: string; icon: LucideIcon; exact?: boole
   { href: '/dashboard/students', label: 'Alunos', icon: Users },
   { href: '/dashboard/workouts', label: 'Treinos', icon: Dumbbell },
   { href: '/dashboard/exercises', label: 'Exercícios', icon: BookOpen },
+  { href: '/dashboard/marketplace', label: 'Marketplace', icon: Globe },
   { href: '/dashboard/billing', label: 'Cobrança', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
 ]

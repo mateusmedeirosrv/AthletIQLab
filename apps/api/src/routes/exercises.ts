@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, eq, getTableColumns, ilike, or, sql } from 'drizzle-orm'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
@@ -89,6 +89,45 @@ export const exerciseRoutes: FastifyPluginAsync = async (fastify) => {
     const rows = await db
       .select()
       .from(exercises)
+      .where(and(...(conditions as [ReturnType<typeof eq>])))
+      .orderBy(exercises.name)
+      .limit(limit)
+      .offset(offset)
+
+    return { data: rows, page, limit }
+  })
+
+  // GET /exercises/marketplace — public exercises from other professionals
+  fastify.get('/marketplace', { preHandler: [fastify.authenticate] }, async (request, _reply) => {
+    const parsed = listQuerySchema.safeParse(request.query)
+    if (!parsed.success) {
+      return _reply.badRequest(parsed.error.issues[0]?.message ?? 'Query inválida')
+    }
+
+    const { search, level, modality, muscleGroup, page, limit } = parsed.data
+    const offset = (page - 1) * limit
+
+    const conditions = [
+      eq(exercises.isPublic, true),
+      sql`${exercises.ownerId} != ${request.userId}::uuid`,
+    ]
+
+    if (level) conditions.push(eq(exercises.level, level))
+    if (search) conditions.push(ilike(exercises.name, `%${search}%`))
+    if (modality)
+      conditions.push(sql`${exercises.modality}::jsonb @> ${JSON.stringify([modality])}::jsonb`)
+    if (muscleGroup)
+      conditions.push(
+        sql`${exercises.muscleGroup}::jsonb @> ${JSON.stringify([muscleGroup])}::jsonb`,
+      )
+
+    const rows = await db
+      .select({
+        ...getTableColumns(exercises),
+        authorName: personals.name,
+      })
+      .from(exercises)
+      .innerJoin(personals, sql`${personals.userId} = ${exercises.ownerId}`)
       .where(and(...(conditions as [ReturnType<typeof eq>])))
       .orderBy(exercises.name)
       .limit(limit)
@@ -279,5 +318,84 @@ export const exerciseRoutes: FastifyPluginAsync = async (fastify) => {
     await db.delete(exercises).where(eq(exercises.id, id))
 
     return reply.code(204).send()
+  })
+
+  // POST /exercises/:id/publish — make own exercise visible in marketplace
+  fastify.post('/:id/publish', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [existing] = await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(and(eq(exercises.id, id), eq(exercises.ownerId, request.userId)))
+      .limit(1)
+
+    if (!existing) return reply.notFound('Exercício não encontrado ou sem permissão')
+
+    const [updated] = await db
+      .update(exercises)
+      .set({ isPublic: true, updatedAt: new Date() })
+      .where(eq(exercises.id, id))
+      .returning()
+
+    return { data: updated }
+  })
+
+  // POST /exercises/:id/unpublish — remove from marketplace
+  fastify.post('/:id/unpublish', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [existing] = await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(and(eq(exercises.id, id), eq(exercises.ownerId, request.userId)))
+      .limit(1)
+
+    if (!existing) return reply.notFound('Exercício não encontrado ou sem permissão')
+
+    const [updated] = await db
+      .update(exercises)
+      .set({ isPublic: false, updatedAt: new Date() })
+      .where(eq(exercises.id, id))
+      .returning()
+
+    return { data: updated }
+  })
+
+  // POST /exercises/:id/import — copy a public exercise to own library
+  fastify.post('/:id/import', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [original] = await db
+      .select({
+        name: exercises.name,
+        description: exercises.description,
+        techniqueTips: exercises.techniqueTips,
+        muscleGroup: exercises.muscleGroup,
+        modality: exercises.modality,
+        equipment: exercises.equipment,
+        contraindications: exercises.contraindications,
+        level: exercises.level,
+        videoUrl: exercises.videoUrl,
+        videoProvider: exercises.videoProvider,
+        thumbnailUrl: exercises.thumbnailUrl,
+      })
+      .from(exercises)
+      .where(and(eq(exercises.id, id), eq(exercises.isPublic, true)))
+      .limit(1)
+
+    if (!original) return reply.notFound('Exercício não encontrado ou não é público')
+
+    const [imported] = await db
+      .insert(exercises)
+      .values({
+        ...original,
+        source: 'personal',
+        ownerId: request.userId,
+        isPublic: false,
+      })
+      .returning()
+
+    return reply.code(201).send({ data: imported })
   })
 }
