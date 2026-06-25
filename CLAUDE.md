@@ -68,6 +68,7 @@ O que está implementado:
 - Suporte: Crisp chat widget no dashboard web com user context pré-preenchido
 - SEO/OG: metadata completo, `robots.txt`, `sitemap.xml`
 - EAS Build: `eas.json` + GitHub Actions release workflow para App Store + Play Store
+- E-mails transacionais: boas-vindas (onboarding), falha de pagamento (webhook `paused`) e cancelamento (webhook `cancelled`) via Resend em `apps/api/src/lib/email.ts`
 - Schema Drizzle completo + migrations com RLS (4 migrations)
 
 **Atenção — divergência de nomenclatura:** O PRD v1.1 renomeou `personals`→`professionals` e `students`→`clients`, mas o código ainda usa os nomes antigos (`personals`, `students`). Ao tocar código existente, usar os nomes do código; ao criar tabelas/rotas novas, usar os nomes do PRD v1.1. Sincronizar em refactor dedicado.
@@ -256,6 +257,9 @@ CLOUDFLARE_R2_BUCKET=athletiqlab-videos, CLOUDFLARE_STREAM_TOKEN=
 
 # App
 APP_URL=, API_URL=, SENTRY_DSN=, LOGTAIL_TOKEN=
+
+# E-mail (Resend)
+RESEND_API_KEY=, RESEND_FROM_EMAIL=AthletiQLab <no-reply@athletiqlab.com>
 
 # Analytics / Suporte (web: NEXT_PUBLIC_*, mobile: EXPO_PUBLIC_*)
 NEXT_PUBLIC_POSTHOG_KEY=, NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com

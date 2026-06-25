@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { db, personals, users } from '@athletiqlab/db'
 import { getSupabaseAdmin } from '../plugins/supabase'
+import { sendWelcomeEmail } from '../lib/email'
 
 const onboardSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
@@ -63,6 +64,8 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         .insert(personals)
         .values({ userId: request.userId, name, cref, bio: bio ?? null, trialEndsAt })
         .returning()
+
+      void sendWelcomeEmail(email, name)
 
       return reply.code(201).send(personal)
     },

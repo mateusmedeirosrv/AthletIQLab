@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import type { FastifyPluginAsync } from 'fastify'
-import { db, personals, subscriptions } from '@athletiqlab/db'
+import { db, personals, subscriptions, users } from '@athletiqlab/db'
+import { sendPaymentFailedEmail, sendSubscriptionCancelledEmail } from '../lib/email'
 
 const MP_API = 'https://api.mercadopago.com'
 
@@ -107,7 +108,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       })
       .where(eq(subscriptions.id, sub.id))
 
-    // Mirror onto personals
+    // Mirror onto personals and trigger transactional emails
     if (mpStatus === 'authorized') {
       await db
         .update(personals)
@@ -126,6 +127,17 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
           updatedAt: new Date(),
         })
         .where(eq(personals.userId, sub.personalId))
+
+      const [userRow] = await db
+        .select({ email: users.email, name: personals.name })
+        .from(users)
+        .innerJoin(personals, eq(personals.userId, users.id))
+        .where(eq(users.id, sub.personalId))
+        .limit(1)
+
+      if (userRow) {
+        void sendPaymentFailedEmail(userRow.email, userRow.name, sub.plan)
+      }
     } else if (mpStatus === 'cancelled') {
       await db
         .update(personals)
@@ -136,6 +148,17 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
           updatedAt: new Date(),
         })
         .where(eq(personals.userId, sub.personalId))
+
+      const [userRow] = await db
+        .select({ email: users.email, name: personals.name })
+        .from(users)
+        .innerJoin(personals, eq(personals.userId, users.id))
+        .where(eq(users.id, sub.personalId))
+        .limit(1)
+
+      if (userRow) {
+        void sendSubscriptionCancelledEmail(userRow.email, userRow.name)
+      }
     }
 
     return reply.code(200).send({ received: true })
