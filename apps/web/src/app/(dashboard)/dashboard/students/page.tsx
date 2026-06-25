@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { UserPlus } from 'lucide-react'
+import { ClipboardX, UserPlus } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ interface Student {
   status: string
   createdAt: string
   inviteAcceptedAt: string | null
+  hasAnamnese: boolean
 }
 
 export default async function StudentsPage() {
@@ -102,7 +103,15 @@ export default async function StudentsPage() {
                           )}
                           <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium text-neutral-900">{student.name}</span>
+                        <div>
+                          <span className="font-medium text-neutral-900">{student.name}</span>
+                          {student.status === 'active' && !student.hasAnamnese && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <ClipboardX className="h-3 w-3 text-amber-500" />
+                              <span className="text-xs text-amber-600">Anamnese pendente</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>

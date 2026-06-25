@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList, Dumbbell, MessageSquare } from 'lucide-react'
+import { ArrowLeft, ClipboardList, ClipboardX, Dumbbell, MessageSquare } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -108,6 +108,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             <h1 className="text-2xl font-semibold text-neutral-900">{student.name}</h1>
             <div className="flex items-center gap-3 mt-1">
               <Badge variant={status.variant}>{status.label}</Badge>
+              {student.status === 'active' && !anamneseStatus.filled && (
+                <span className="flex items-center gap-1 text-xs text-amber-600">
+                  <ClipboardX className="h-3 w-3" />
+                  Anamnese pendente
+                </span>
+              )}
               <span className="text-sm text-neutral-500">
                 Desde{' '}
                 {new Date(student.createdAt).toLocaleDateString('pt-BR', {

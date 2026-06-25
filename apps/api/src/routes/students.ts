@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
@@ -110,7 +110,10 @@ export const studentRoutes: FastifyPluginAsync = async (fastify) => {
   // List students for this personal
   fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, _reply) => {
     const list = await db
-      .select()
+      .select({
+        ...getTableColumns(students),
+        hasAnamnese: sql<boolean>`exists(select 1 from ${anamneses} where ${anamneses.studentId} = ${students.userId})`,
+      })
       .from(students)
       .where(and(eq(students.personalId, request.userId), ne(students.status, 'removed')))
     return list
