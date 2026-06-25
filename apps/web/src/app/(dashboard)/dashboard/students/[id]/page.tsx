@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { AnamneseSection } from './anamnese-section'
 import { ChatSection } from './chat-section'
+import { ReportDownloadButton } from './report-download-button'
 
 const statusLabel: Record<
   string,
@@ -98,24 +99,27 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-lg font-bold">
-          {initials}
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">{student.name}</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <Badge variant={status.variant}>{status.label}</Badge>
-            <span className="text-sm text-neutral-500">
-              Desde{' '}
-              {new Date(student.createdAt).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-lg font-bold">
+            {initials}
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900">{student.name}</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <Badge variant={status.variant}>{status.label}</Badge>
+              <span className="text-sm text-neutral-500">
+                Desde{' '}
+                {new Date(student.createdAt).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
           </div>
         </div>
+        <ReportDownloadButton studentId={id} studentName={student.name} token={token} />
       </div>
 
       {/* Treinos section */}

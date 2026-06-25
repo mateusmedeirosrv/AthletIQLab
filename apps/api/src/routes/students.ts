@@ -1,9 +1,20 @@
-import { and, desc, eq, gt, isNull, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
-import { db, personals, personalInvites, students, anamneses } from '@athletiqlab/db'
+import {
+  db,
+  personals,
+  personalInvites,
+  students,
+  anamneses,
+  workouts,
+  workoutExercises,
+  exercises,
+  workoutSessions,
+} from '@athletiqlab/db'
 import { PLAN_LIMITS } from '@athletiqlab/shared'
+import { generateStudentReport } from '../lib/report'
 
 const anamneseBodySchema = z.object({
   weightKg: z.string().optional(),
@@ -261,5 +272,117 @@ export const studentRoutes: FastifyPluginAsync = async (fastify) => {
       .returning()
 
     return reply.code(201).send({ data: created })
+  })
+
+  // GET /students/:id/report — PDF report for a student (professional only)
+  fastify.get('/:id/report', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const [student] = await db
+      .select({
+        name: students.name,
+        birthDate: students.birthDate,
+        gender: students.gender,
+      })
+      .from(students)
+      .where(and(eq(students.userId, id), eq(students.personalId, request.userId)))
+      .limit(1)
+
+    if (!student) return reply.notFound('Aluno não encontrado')
+
+    const [personal] = await db
+      .select({ name: personals.name, cref: personals.cref })
+      .from(personals)
+      .where(eq(personals.userId, request.userId))
+      .limit(1)
+
+    if (!personal) return reply.notFound()
+
+    const [anamnese] = await db
+      .select()
+      .from(anamneses)
+      .where(eq(anamneses.studentId, id))
+      .orderBy(desc(anamneses.createdAt))
+      .limit(1)
+
+    const studentWorkouts = await db
+      .select({
+        id: workouts.id,
+        title: workouts.title,
+        modality: workouts.modality,
+        estimatedDurationMin: workouts.estimatedDurationMin,
+        publishedAt: workouts.publishedAt,
+      })
+      .from(workouts)
+      .where(and(eq(workouts.studentId, id), eq(workouts.status, 'published')))
+      .orderBy(desc(workouts.publishedAt))
+
+    const workoutList = await Promise.all(
+      studentWorkouts.map(async (w) => {
+        const exRows = await db
+          .select({
+            order: workoutExercises.order,
+            sets: workoutExercises.sets,
+            reps: workoutExercises.reps,
+            load: workoutExercises.load,
+            restSeconds: workoutExercises.restSeconds,
+            exerciseName: exercises.name,
+            muscleGroup: exercises.muscleGroup,
+          })
+          .from(workoutExercises)
+          .innerJoin(exercises, eq(exercises.id, workoutExercises.exerciseId))
+          .where(eq(workoutExercises.workoutId, w.id))
+          .orderBy(workoutExercises.order)
+
+        return { ...w, exercises: exRows }
+      }),
+    )
+
+    const sessionRows = await db
+      .select({
+        startedAt: workoutSessions.startedAt,
+        endedAt: workoutSessions.endedAt,
+        totalVolumeKg: workoutSessions.totalVolumeKg,
+        avgHrBpm: workoutSessions.avgHrBpm,
+        rpe: workoutSessions.rpe,
+        workoutId: workoutSessions.workoutId,
+      })
+      .from(workoutSessions)
+      .where(and(eq(workoutSessions.studentId, id), isNotNull(workoutSessions.endedAt)))
+      .orderBy(desc(workoutSessions.startedAt))
+      .limit(20)
+
+    const workoutTitleMap = new Map(studentWorkouts.map((w) => [w.id, w.title]))
+    const sessions = sessionRows.map((s) => ({
+      ...s,
+      workoutTitle: workoutTitleMap.get(s.workoutId) ?? 'Treino',
+    }))
+
+    const [totals] = await db
+      .select({
+        totalSessions: sql<number>`count(*)::int`.as('total_sessions'),
+        totalVolumeKg:
+          sql<number>`coalesce(sum(${workoutSessions.totalVolumeKg}::numeric), 0)::float`.as(
+            'total_volume_kg',
+          ),
+      })
+      .from(workoutSessions)
+      .where(and(eq(workoutSessions.studentId, id), isNotNull(workoutSessions.endedAt)))
+
+    const pdfBuffer = await generateStudentReport({
+      professional: { name: personal.name, cref: personal.cref },
+      student: { name: student.name, birthDate: student.birthDate, gender: student.gender },
+      anamnese: anamnese ?? null,
+      workouts: workoutList,
+      sessions,
+      totals: totals ?? { totalSessions: 0, totalVolumeKg: 0 },
+    })
+
+    const filename = `relatorio-${student.name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
+
+    return reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(pdfBuffer)
   })
 }
