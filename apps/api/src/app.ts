@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit'
 import sensible from '@fastify/sensible'
 
 import { authPlugin } from './plugins/auth'
+import { adminRoutes } from './routes/admin'
 import { aiChatRoutes } from './routes/ai-chat'
 import { authRoutes } from './routes/auth'
 import { billingRoutes } from './routes/billing'
@@ -53,6 +54,7 @@ export async function buildApp() {
   await app.register(webhookRoutes, { prefix: '/webhooks' })
   await app.register(aiChatRoutes, { prefix: '/ai/workout-chat' })
   await app.register(feedbackRoutes, { prefix: '/feedback' })
+  await app.register(adminRoutes, { prefix: '/admin/personals' })
 
   return app
 }

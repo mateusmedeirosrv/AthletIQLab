@@ -7,7 +7,8 @@ import { sendWelcomeEmail } from '../lib/email'
 
 const onboardSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
-  cref: z.string().regex(/^\d{6}-[A-Z]\/[A-Z]{2}$/, 'CREF inválido (formato: 123456-G/SP)'),
+  councilType: z.enum(['cref', 'crefito', 'crm', 'crn', 'outro']).default('cref'),
+  cref: z.string().min(3, 'Número de registro inválido').max(30),
   bio: z.string().max(500).optional(),
   consentLgpd: z.literal(true, {
     errorMap: () => ({ message: 'Consentimento LGPD é obrigatório' }),
@@ -23,7 +24,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       if (!parsed.success) {
         return reply.badRequest(parsed.error.issues[0]?.message ?? 'Dados inválidos')
       }
-      const { name, cref, bio } = parsed.data
+      const { name, councilType, cref, bio } = parsed.data
 
       const existing = await db
         .select({ userId: personals.userId })
@@ -62,7 +63,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [personal] = await db
         .insert(personals)
-        .values({ userId: request.userId, name, cref, bio: bio ?? null, trialEndsAt })
+        .values({ userId: request.userId, name, councilType, cref, bio: bio ?? null, trialEndsAt })
         .returning()
 
       void sendWelcomeEmail(email, name)

@@ -9,12 +9,14 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'past_due',
   'canceled',
 ])
+export const councilTypeEnum = pgEnum('council_type', ['cref', 'crefito', 'crm', 'crn', 'outro'])
 
 export const personals = pgTable('personals', {
   userId: uuid('user_id')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  councilType: councilTypeEnum('council_type').notNull().default('cref'),
   cref: text('cref').notNull(),
   crefVerifiedAt: timestamp('cref_verified_at', { withTimezone: true }),
   bio: text('bio'),

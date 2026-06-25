@@ -12,9 +12,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/lib/api'
 
+const COUNCIL_OPTIONS = [
+  { value: 'cref', label: 'CREF', hint: 'Ex: 123456-G/SP', placeholder: '123456-G/SP' },
+  { value: 'crefito', label: 'CREFITO', hint: 'Ex: 1-12345-F', placeholder: '1-12345-F' },
+  { value: 'crm', label: 'CRM', hint: 'Ex: 12345/SP', placeholder: '12345/SP' },
+  { value: 'crn', label: 'CRN', hint: 'Ex: 1234/SP', placeholder: '1234/SP' },
+  {
+    value: 'outro',
+    label: 'Outro',
+    hint: 'Número do seu registro profissional',
+    placeholder: 'Número do registro',
+  },
+] as const
+
+type CouncilValue = (typeof COUNCIL_OPTIONS)[number]['value']
+
 const schema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
-  cref: z.string().regex(/^\d{6}-[A-Z]\/[A-Z]{2}$/, 'Formato: 123456-G/SP'),
+  councilType: z.enum(['cref', 'crefito', 'crm', 'crn', 'outro']),
+  cref: z.string().min(3, 'Número de registro inválido').max(30),
   bio: z.string().max(500).optional(),
   consentLgpd: z.literal(true, {
     errorMap: () => ({ message: 'Você deve aceitar os termos para continuar' }),
@@ -37,10 +53,16 @@ export default function OnboardingPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { councilType: 'cref' },
   })
+
+  const selectedCouncil = watch('councilType') as CouncilValue
+  const councilMeta =
+    COUNCIL_OPTIONS.find((c) => c.value === selectedCouncil) ?? COUNCIL_OPTIONS[0]!
 
   async function onSubmit(data: FormData) {
     setServerError(null)
@@ -85,17 +107,41 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cref">CREF</Label>
+              <Label>Conselho profissional</Label>
+              <div className="flex gap-2 flex-wrap">
+                {COUNCIL_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-1.5 cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                      selectedCouncil === opt.value
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      value={opt.value}
+                      className="sr-only"
+                      {...register('councilType')}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cref">Número do registro ({councilMeta.label})</Label>
               <Input
                 id="cref"
-                placeholder="123456-G/SP"
+                placeholder={councilMeta.placeholder}
                 {...register('cref')}
                 aria-invalid={!!errors.cref}
               />
               {errors.cref ? (
                 <p className="text-xs text-red-500">{errors.cref.message}</p>
               ) : (
-                <p className="text-xs text-neutral-400">Número do seu registro profissional</p>
+                <p className="text-xs text-neutral-400">{councilMeta.hint}</p>
               )}
             </div>
 

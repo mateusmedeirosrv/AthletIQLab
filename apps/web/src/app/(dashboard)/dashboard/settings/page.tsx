@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Save } from 'lucide-react'
+import { CheckCircle2, Clock, Loader2, Save } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,9 +27,20 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+const COUNCIL_LABEL: Record<string, string> = {
+  cref: 'CREF',
+  crefito: 'CREFITO',
+  crm: 'CRM',
+  crn: 'CRN',
+  outro: 'Registro',
+}
+
 interface PersonalProfile {
   name: string
   bio: string | null
+  cref: string
+  councilType: string
+  crefVerifiedAt: string | null
   plan: Plan
   subscriptionStatus: string
   brandColor: string | null
@@ -180,6 +191,43 @@ export default function SettingsPage() {
               {saved && <p className="text-sm text-green-600">Salvo!</p>}
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Council registration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Registro profissional</CardTitle>
+          <CardDescription>
+            Seu número de conselho é verificado manualmente pela equipe AthletiQLab.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg bg-neutral-50 border border-neutral-200 px-5 py-4">
+            <div>
+              <p className="text-sm font-medium text-neutral-900">
+                {COUNCIL_LABEL[profile.councilType] ?? 'Registro'}{' '}
+                <span className="font-mono">{profile.cref}</span>
+              </p>
+            </div>
+            {profile.crefVerifiedAt ? (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
+                <CheckCircle2 className="h-4 w-4" />
+                Verificado
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-sm text-amber-600">
+                <Clock className="h-4 w-4" />
+                Aguardando verificação
+              </span>
+            )}
+          </div>
+          {!profile.crefVerifiedAt && (
+            <p className="mt-3 text-xs text-neutral-500">
+              Enviamos um e-mail de confirmação. A verificação costuma ocorrer em até 48 horas
+              úteis.
+            </p>
+          )}
         </CardContent>
       </Card>
 
