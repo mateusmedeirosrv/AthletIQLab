@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments, ErrorBoundary } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '../context/auth'
+import { BrandProvider, DEFAULT_BRAND_COLOR } from '../context/brand'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -46,14 +47,27 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
 export { ErrorBoundary }
 
+function BrandedApp() {
+  const { studentProfile } = useAuth()
+  return (
+    <BrandProvider
+      primaryColor={studentProfile?.brandPrimaryColor ?? DEFAULT_BRAND_COLOR}
+      logoUrl={studentProfile?.brandLogoUrl ?? null}
+      professionalName={studentProfile?.professionalName ?? null}
+    >
+      <NavigationGuard>
+        <Stack screenOptions={{ headerShown: false }} />
+      </NavigationGuard>
+      <StatusBar style="auto" />
+    </BrandProvider>
+  )
+}
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <NavigationGuard>
-          <Stack screenOptions={{ headerShown: false }} />
-        </NavigationGuard>
-        <StatusBar style="auto" />
+        <BrandedApp />
       </AuthProvider>
     </QueryClientProvider>
   )

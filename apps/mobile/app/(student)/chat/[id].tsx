@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import { apiClient } from '../../../lib/api'
 import { useAuth } from '../../../context/auth'
+import { useBrand } from '../../../context/brand'
 import { useConversation, type ChatMessage } from '../../../hooks/useConversations'
 import { t } from '../../../lib/i18n'
 
@@ -22,6 +23,8 @@ export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuth()
+  const { primaryColor } = useBrand()
+  const styles = useMemo(() => createStyles(primaryColor), [primaryColor])
   const queryClient = useQueryClient()
   const { data: conv, isLoading } = useConversation(id)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -29,14 +32,12 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false)
   const listRef = useRef<FlatList<ChatMessage>>(null)
 
-  // Seed local state from initial query
   useEffect(() => {
     if (conv?.messages) {
       setMessages(conv.messages)
     }
   }, [conv?.messages])
 
-  // Supabase Realtime subscription
   useEffect(() => {
     if (!id) return
 
@@ -56,7 +57,6 @@ export default function ChatScreen() {
             if (prev.find((m) => m.id === msg.id)) return prev
             return [...prev, msg]
           })
-          // Scroll to bottom
           setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
         },
       )
@@ -77,7 +77,6 @@ export default function ChatScreen() {
         content: text,
         type: 'text',
       })
-      // Optimistically add our own message if Realtime hasn't fired yet
       setMessages((prev) => (prev.find((m) => m.id === res.data.id) ? prev : [...prev, res.data]))
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
@@ -105,7 +104,6 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>{'‹'}</Text>
@@ -157,74 +155,76 @@ export default function ChatScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#fff',
-  },
-  backBtn: { marginRight: 8 },
-  backText: { fontSize: 28, color: '#2563EB', lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: '#111827' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  muted: { fontSize: 15, color: '#9CA3AF' },
-  messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
-  bubble: {
-    maxWidth: '80%',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 4,
-  },
-  bubbleMe: { backgroundColor: '#2563EB', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  bubbleThem: {
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  bubbleText: { fontSize: 15, lineHeight: 21 },
-  bubbleTextMe: { color: '#fff' },
-  bubbleTextThem: { color: '#111827' },
-  bubbleTime: { fontSize: 10, marginTop: 4 },
-  bubbleTimeMe: { color: 'rgba(255,255,255,0.6)', textAlign: 'right' },
-  bubbleTimeThem: { color: '#9CA3AF' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 120,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendBtnDisabled: { backgroundColor: '#93C5FD' },
-  sendBtnText: { fontSize: 24, color: '#fff', lineHeight: 28 },
-})
+function createStyles(color: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E5E7EB',
+      backgroundColor: '#fff',
+    },
+    backBtn: { marginRight: 8 },
+    backText: { fontSize: 28, color, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '600', color: '#111827' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    muted: { fontSize: 15, color: '#9CA3AF' },
+    messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
+    bubble: {
+      maxWidth: '80%',
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginBottom: 4,
+    },
+    bubbleMe: { backgroundColor: color, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
+    bubbleThem: {
+      backgroundColor: '#fff',
+      alignSelf: 'flex-start',
+      borderBottomLeftRadius: 4,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+    },
+    bubbleText: { fontSize: 15, lineHeight: 21 },
+    bubbleTextMe: { color: '#fff' },
+    bubbleTextThem: { color: '#111827' },
+    bubbleTime: { fontSize: 10, marginTop: 4 },
+    bubbleTimeMe: { color: 'rgba(255,255,255,0.6)', textAlign: 'right' },
+    bubbleTimeThem: { color: '#9CA3AF' },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      padding: 12,
+      backgroundColor: '#fff',
+      borderTopWidth: 1,
+      borderTopColor: '#E5E7EB',
+      gap: 8,
+    },
+    input: {
+      flex: 1,
+      minHeight: 40,
+      maxHeight: 120,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      fontSize: 15,
+      color: '#111827',
+      backgroundColor: '#F9FAFB',
+    },
+    sendBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: color,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sendBtnDisabled: { opacity: 0.4 },
+    sendBtnText: { fontSize: 24, color: '#fff', lineHeight: 28 },
+  })
+}

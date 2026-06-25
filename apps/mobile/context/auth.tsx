@@ -14,6 +14,9 @@ interface StudentProfile {
   personalId: string
   name: string
   status: string
+  brandPrimaryColor: string | null
+  brandLogoUrl: string | null
+  professionalName: string | null
 }
 
 interface AuthContextValue {

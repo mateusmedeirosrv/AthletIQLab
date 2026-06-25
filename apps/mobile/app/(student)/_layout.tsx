@@ -1,12 +1,15 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useBrand } from '../../context/brand'
 
 export default function StudentLayout() {
+  const { primaryColor } = useBrand()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2563EB',
+        tabBarActiveTintColor: primaryColor,
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: { borderTopColor: '#E5E7EB' },
       }}

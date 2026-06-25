@@ -1,12 +1,16 @@
+import { useMemo } from 'react'
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useConversations } from '../../../hooks/useConversations'
 import { t } from '../../../lib/i18n'
+import { useBrand } from '../../../context/brand'
 
 export default function ChatListScreen() {
   const router = useRouter()
   const { data: conversations, isLoading } = useConversations()
+  const { primaryColor } = useBrand()
+  const styles = useMemo(() => createStyles(primaryColor), [primaryColor])
 
   if (isLoading) {
     return (
@@ -68,35 +72,37 @@ export default function ChatListScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  heading: { fontSize: 24, fontWeight: '700', color: '#111827', padding: 16, paddingBottom: 8 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  muted: { fontSize: 15, color: '#9CA3AF', textAlign: 'center', lineHeight: 22 },
-  list: { paddingHorizontal: 16, paddingBottom: 16 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  rowContent: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  rowDate: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-})
+function createStyles(color: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    heading: { fontSize: 24, fontWeight: '700', color: '#111827', padding: 16, paddingBottom: 8 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+    muted: { fontSize: 15, color: '#9CA3AF', textAlign: 'center', lineHeight: 22 },
+    list: { paddingHorizontal: 16, paddingBottom: 16 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+      gap: 12,
+      shadowColor: '#000',
+      shadowOpacity: 0.04,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: color,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+    rowContent: { flex: 1 },
+    rowTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
+    rowDate: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  })
+}

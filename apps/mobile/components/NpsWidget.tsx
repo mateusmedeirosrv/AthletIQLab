@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { apiClient } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { useBrand } from '../context/brand'
 
 interface NpsWidgetProps {
   trigger: string
@@ -22,6 +23,8 @@ export function NpsWidget({ trigger, visible, onDismiss }: NpsWidgetProps) {
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const { primaryColor } = useBrand()
+  const styles = useMemo(() => createStyles(primaryColor), [primaryColor])
 
   async function submit() {
     if (score === null) return
@@ -115,114 +118,116 @@ export function NpsWidget({ trigger, visible, onDismiss }: NpsWidgetProps) {
   )
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  scores: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  scoreBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreBtnActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  scoreLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  scoreLabelActive: {
-    color: '#fff',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    color: '#111827',
-    textAlignVertical: 'top',
-    marginBottom: 16,
-    minHeight: 72,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dismissBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
-  },
-  dismissText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  submitBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-  },
-  submitBtnDisabled: {
-    backgroundColor: '#93C5FD',
-  },
-  submitText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  thankYou: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 8,
-  },
-  thankYouEmoji: {
-    fontSize: 36,
-  },
-  thankYouText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-})
+function createStyles(color: string) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: '#fff',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 24,
+      paddingBottom: 40,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: '#111827',
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: '#6B7280',
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    scores: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    scoreBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scoreBtnActive: {
+      backgroundColor: color,
+      borderColor: color,
+    },
+    scoreLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#374151',
+    },
+    scoreLabelActive: {
+      color: '#fff',
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 14,
+      color: '#111827',
+      textAlignVertical: 'top',
+      marginBottom: 16,
+      minHeight: 72,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    dismissBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      alignItems: 'center',
+    },
+    dismissText: {
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
+    submitBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: color,
+      alignItems: 'center',
+    },
+    submitBtnDisabled: {
+      opacity: 0.5,
+    },
+    submitText: {
+      fontSize: 14,
+      color: '#fff',
+      fontWeight: '600',
+    },
+    thankYou: {
+      alignItems: 'center',
+      paddingVertical: 20,
+      gap: 8,
+    },
+    thankYouEmoji: {
+      fontSize: 36,
+    },
+    thankYouText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#111827',
+    },
+  })
+}

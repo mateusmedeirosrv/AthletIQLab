@@ -41,14 +41,24 @@ const updateStudentSchema = z.object({
 export const studentRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /students/me — returns the student profile for the authenticated client
   fastify.get('/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const [student] = await db
-      .select()
+    const [row] = await db
+      .select({
+        ...getTableColumns(students),
+        brandPrimaryColor: sql<
+          string | null
+        >`case when ${personals.plan} = 'elite' then ${personals.brandColor} else null end`,
+        brandLogoUrl: sql<
+          string | null
+        >`case when ${personals.plan} = 'elite' then ${personals.brandLogoUrl} else null end`,
+        professionalName: personals.name,
+      })
       .from(students)
+      .innerJoin(personals, eq(personals.userId, students.personalId))
       .where(eq(students.userId, request.userId))
       .limit(1)
 
-    if (!student) return reply.notFound('Perfil de aluno não encontrado')
-    return { data: student }
+    if (!row) return reply.notFound('Perfil de aluno não encontrado')
+    return { data: row }
   })
 
   // POST /students/invites/accept — client accepts a professional's invite code

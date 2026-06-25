@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Rect, Text as SvgText } from 'react-native-svg'
 import { useProgress, type WeeklyBucket } from '../../../hooks/useProgress'
 import { t } from '../../../lib/i18n'
+import { useBrand } from '../../../context/brand'
 
 const SCREEN_W = Dimensions.get('window').width
 const CHART_PADDING = 16
@@ -76,6 +77,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function ProgressScreen() {
   const { data, isLoading, isError } = useProgress()
+  const { primaryColor } = useBrand()
 
   if (isLoading) {
     return (
@@ -122,7 +124,7 @@ export default function ProgressScreen() {
         {/* Frequency chart */}
         {data.weeklySessions.length > 0 && (
           <Section title={t('progress.frequency', 'Frequência semanal (treinos)')}>
-            <BarChart data={data.weeklySessions} valueKey="sessionCount" color="#2563EB" />
+            <BarChart data={data.weeklySessions} valueKey="sessionCount" color={primaryColor} />
           </Section>
         )}
 

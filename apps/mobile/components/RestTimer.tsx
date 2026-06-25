@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useBrand } from '../context/brand'
 import Animated, {
   useAnimatedProps,
   useSharedValue,
@@ -23,6 +24,7 @@ interface Props {
 export function RestTimer({ seconds, onComplete, onSkip }: Props) {
   const [remaining, setRemaining] = useState(seconds)
   const progress = useSharedValue(1)
+  const { primaryColor } = useBrand()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function RestTimer({ seconds, onComplete, onSkip }: Props) {
           cx={65}
           cy={65}
           r={RADIUS}
-          stroke="#2563EB"
+          stroke={primaryColor}
           strokeWidth={8}
           fill="none"
           strokeDasharray={CIRCUMFERENCE}

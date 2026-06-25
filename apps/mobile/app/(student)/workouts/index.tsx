@@ -4,10 +4,12 @@ import { useRouter } from 'expo-router'
 import { WorkoutCard } from '../../../components/WorkoutCard'
 import { useWorkouts } from '../../../hooks/useWorkouts'
 import { t } from '../../../lib/i18n'
+import { useBrand } from '../../../context/brand'
 
 export default function WorkoutsScreen() {
   const { data: workouts, isLoading, isError } = useWorkouts()
   const router = useRouter()
+  const { primaryColor } = useBrand()
 
   return (
     <SafeAreaView style={styles.container}>
@@ -15,7 +17,7 @@ export default function WorkoutsScreen() {
 
       {isLoading && (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color={primaryColor} />
         </View>
       )}
 

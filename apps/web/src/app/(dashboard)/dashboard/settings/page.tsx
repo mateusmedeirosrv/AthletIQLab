@@ -18,6 +18,7 @@ import { PLAN_LIMITS, PLAN_PRICES_BRL } from '@athletiqlab/shared'
 const schema = z.object({
   name: z.string().min(2).max(100),
   bio: z.string().max(500).optional(),
+  brandLogoUrl: z.string().url('URL inválida').optional().or(z.literal('')),
   brandColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor inválida')
@@ -43,6 +44,7 @@ interface PersonalProfile {
   crefVerifiedAt: string | null
   plan: Plan
   subscriptionStatus: string
+  brandLogoUrl: string | null
   brandColor: string | null
   trialEndsAt: string | null
 }
@@ -82,6 +84,7 @@ export default function SettingsPage() {
         reset({
           name: data.name,
           bio: data.bio ?? '',
+          brandLogoUrl: data.brandLogoUrl ?? '',
           brandColor: data.brandColor ?? '',
         })
       } catch {
@@ -99,6 +102,7 @@ export default function SettingsPage() {
         {
           name: data.name,
           bio: data.bio ?? null,
+          brandLogoUrl: data.brandLogoUrl || null,
           brandColor: data.brandColor || null,
         },
         token,
@@ -155,6 +159,23 @@ export default function SettingsPage() {
                 {...register('bio')}
               />
             </div>
+
+            {profile.plan === 'elite' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="brandLogoUrl">Logo da marca (URL)</Label>
+                <Input
+                  id="brandLogoUrl"
+                  placeholder="https://seusite.com/logo.png"
+                  {...register('brandLogoUrl')}
+                />
+                {errors.brandLogoUrl && (
+                  <p className="text-xs text-red-500">{errors.brandLogoUrl.message}</p>
+                )}
+                <p className="text-xs text-neutral-400">
+                  URL pública da logo exibida no app do aluno.
+                </p>
+              </div>
+            )}
 
             {profile.plan === 'elite' && (
               <div className="space-y-1.5">
